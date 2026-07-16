@@ -105,10 +105,10 @@ if st.session_state.get("api_initialized"):
             col1, col2, col3 = st.columns(3)
             with col1:
                 if st.button("Go to Chat Workspace", use_container_width=True, type="primary"):
-                    st.switch_page("pages/chat.py")
+                    st.switch_page("pages/Chat.py")
             with col2:
                 if st.button("Manage Documents", use_container_width=True):
-                    st.switch_page("pages/chat.py")
+                    st.switch_page("pages/Chat.py")
             with col3:
                 if st.button("Log out session", use_container_width=True):
                     del st.session_state["jwt_token"]
