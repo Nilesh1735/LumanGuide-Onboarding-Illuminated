@@ -1,0 +1,62 @@
+name: Dependency Security Audit
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  # Run weekly on Monday at 06:00 UTC to catch newly disclosed CVEs
+  # in dependencies that have not been updated in the codebase.
+  schedule:
+    - cron: "0 6 * * 1"
+  # Allow manual invocation from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    name: Audit Python dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-audit-${{ runner.os }}-py312-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-audit-${{ runner.os }}-py312-
+
+      - name: Install pip-audit
+        run: pip install --upgrade pip-audit
+
+      - name: Run pip-audit against requirements.txt
+        # --strict: fail on both known vulnerabilities AND dependency
+        #            confusions (malicious look-alike packages).
+        # --desc:   include the full CVE/vulnerability description in the
+        #           output for triage.
+        # --no-deps: audit only top-level requirements, not transitive
+        #            deps (useful for pinned lock files; change to
+        #            --require-hashes for production).
+        run: |
+          echo "=============================================="
+          echo "Scanning requirements.txt for known CVEs..."
+          echo "=============================================="
+          pip-audit \
+            --strict \
+            --desc \
+            --no-deps \
+            -r requirements.txt
+          echo ""
+          echo "Audit passed: no known high-severity vulnerabilities."
