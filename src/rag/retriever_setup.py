@@ -3,9 +3,6 @@ import logging
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_openai import OpenAIEmbeddings
-from langchain_mistralai import MistralAIEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
 
 # Ensure environment variables are loaded immediately
 load_dotenv(override=True)
@@ -16,36 +13,21 @@ FAISS_INDEX_PATH = "data/faiss_index"
 
 def _initialize_embeddings():
     """
-    3-Tier Embedding Fallback:
-    1. Try Mistral AI (Fast, Cloud, Generous Free Tier)
-    2. Try OpenAI (Fast, Cloud, Industry Standard)
-    3. Fallback to HuggingFace (Fast, Local CPU - 100% reliable)
+    Initialize embeddings using Google Gemini.
+    We use Gemini as the primary cloud provider to save RAM on Render's free tier.
     """
-    # 1. Try Mistral AI
-    mistral_key = os.getenv("MISTRAL_API_KEY")
-    if mistral_key:
-        try:
-            logger.info("Initializing Mistral AI Embeddings (Tier 1)...")
-            return MistralAIEmbeddings(model="mistral-embed", api_key=mistral_key)
-        except Exception as e:
-            logger.warning(f"Mistral Embeddings failed to initialize: {e}.")
+    gemini_key = os.getenv("GOOGLE_API_KEY", "").strip()
+    if not gemini_key:
+        raise RuntimeError(
+            "GOOGLE_API_KEY is not set. The FAISS vector store requires Google "
+            "Gemini embeddings. Please add it to your environment variables."
+        )
     
-    # 2. Try OpenAI
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key and openai_key != "sk-your_openai_key_here":
-        try:
-            logger.info("Initializing OpenAI Embeddings (Tier 2)...")
-            return OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key=openai_key)
-        except Exception as e:
-            logger.warning(f"OpenAI Embeddings failed to initialize: {e}.")
-            
-    # 3. Fallback to HuggingFace (Runs locally on CPU)
-    logger.info("Falling back to HuggingFace Embeddings (Tier 3 - Local CPU)...")
-    try:
-        return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    except Exception as e:
-        logger.error(f"Fatal: HuggingFace Embeddings failed to initialize: {e}")
-        raise RuntimeError("Could not initialize any embedding model. Check your API keys and internet connection.")
+    logger.info("Initializing Google Gemini Embeddings...")
+    return GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001",
+        google_api_key=gemini_key,
+    )
 
 # Initialize the global embeddings instance
 embeddings = _initialize_embeddings()
@@ -54,14 +36,18 @@ def _load_vectorstore():
     """Load the FAISS vectorstore object if it exists."""
     if os.path.exists(FAISS_INDEX_PATH):
         try:
-            return FAISS.load_local(FAISS_INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
+            return FAISS.load_local(
+                FAISS_INDEX_PATH, 
+                embeddings, 
+                allow_dangerous_deserialization=True
+            )
         except Exception as e:
             logger.error(f"Failed to load FAISS index: {e}")
             return None
     return None
 
 def get_all_documents():
-    """Extract all Document objects from the FAISS docstore (Fixes iteration error)."""
+    """Extract all Document objects from the FAISS docstore."""
     vectorstore = _load_vectorstore()
     if vectorstore:
         try:
