@@ -4,6 +4,7 @@ langchain-community
 langchain-core
 langchain-google-genai
 langchain-mistralai
+langchain-openai
 faiss-cpu
 tavily-python
 beautifulsoup4
