@@ -29,7 +29,7 @@ if st.session_state.show_logout_confirm:
             if st.button("Yes, log out", type="primary", use_container_width=True):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
-                st.switch_page("home.py")
+                st.switch_page("Home.py")
         with col_cancel:
             if st.button("Cancel", use_container_width=True):
                 st.session_state.show_logout_confirm = False
