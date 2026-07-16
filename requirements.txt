@@ -24,4 +24,5 @@ langsmith
 pypdf
 PyJWT
 passlib[bcrypt]
+bcrypt=4.0.1
 streamlit-feedback
