@@ -1,18 +1,24 @@
 import os
 import tempfile
 import logging
-from fastapi import UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 logger = logging.getLogger(__name__)
 
-# Synchronous function to avoid 'coroutine' serialization issues in routes.py
-def documents(file: UploadFile = File(...), description: str = Form(...)):
+# Restore the APIRouter that routes.py is importing
+documents = APIRouter()
+
+@documents.post("/rag/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    description: str = Form(...),
+):
     """
     Bulletproof document upload for Render's ephemeral file system.
     """
     try:
-        # 1. Read file contents synchronously
-        contents = file.file.read()
+        # 1. Read file contents
+        contents = await file.read()
         
         # 2. Extract text based on file type
         text = ""
