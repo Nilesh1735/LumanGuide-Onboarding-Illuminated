@@ -1,38 +1,32 @@
 import logging
 import os
+import streamlit as st
 from typing import Any
 
 import requests
 
 logger = logging.getLogger(__name__)
 
-# BACKEND_URL can override this. The README starts FastAPI on port 8000.
-BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+# Safely resolve the backend URL.
+# 1. Checks Streamlit Cloud Secrets (for production)
+# 2. Checks local environment variables (for local dev)
+# 3. Falls back to localhost:8000
+try:
+    BASE_URL = st.secrets.get("BACKEND_URL", os.getenv("BACKEND_URL", "http://127.0.0.1:8000"))
+except Exception:
+    # Fallback if running outside of a Streamlit context or no secrets file exists
+    BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+
+BASE_URL = BASE_URL.rstrip("/")
 
 
 def _candidate_base_urls() -> list[str]:
-    """Return candidate base URLs in preferred order.
-
-    Preference: try local default port 8000 first, then any BACKEND_URL provided
-    via env, then 8080 as a last fallback. This favors the default development
-    server port while still allowing overrides.
+    """Return the resolved backend URL.
+    
+    We no longer hardcode localhost ports here because on Streamlit Cloud, 
+    trying localhost causes 5-10 second timeouts on every request.
     """
-    urls: list[str] = []
-    # Always try 8000 first
-    default_8000 = "http://127.0.0.1:8000"
-    if default_8000 not in urls:
-        urls.append(default_8000)
-
-    # Then include configured BASE_URL if it's different
-    if BASE_URL not in urls:
-        urls.append(BASE_URL)
-
-    # Finally, try 8080 as a legacy fallback
-    legacy_8080 = "http://127.0.0.1:8080"
-    if legacy_8080 not in urls:
-        urls.append(legacy_8080)
-
-    return urls
+    return [BASE_URL]
 
 
 def _parse_response(response: requests.Response) -> Any:
@@ -53,13 +47,8 @@ def _error_message(response: requests.Response) -> str:
 
 def _post_with_fallback(endpoint: str, json_data: dict, headers: dict, timeout: float = 180.0) -> requests.Response:
     """
-    Try the mounted /api route first, then the direct route for older servers.
-    Also checks ports 8000 and 8080 because this project has used both.
-
-    If all reachable endpoints return 404, raise an HTTPError that includes the
-    list of attempted URLs and their status codes. This makes it easier to
-    diagnose misconfigured ports/prefixes from the UI while preserving the
-    normal successful behavior.
+    Try the mounted /api route first, then the direct route.
+    Uses the resolved BASE_URL.
     """
     cleaned_endpoint = endpoint.lstrip("/")
     urls_to_try = []
@@ -123,14 +112,7 @@ def create_user(username: str, password: str, api_token: str) -> dict:
 
 
 def login_user(username: str, password: str, api_token: str) -> dict:
-    """Authenticate user login and return a structured result for the UI.
-
-    Returns a dict with keys:
-      - ok: bool
-      - data: dict (on success)
-      - error: str (on failure)
-      - attempts: list[str] (optional diagnostic lines when fallback URLs were tried)
-    """
+    """Authenticate user login and return a structured result for the UI."""
     headers = {"X-API-TOKEN": api_token, "Content-Type": "application/json"}
     try:
         response = _post_with_fallback(
@@ -183,21 +165,14 @@ def query_backend(query: str, session_id: str, jwt_token: str, openai_api_key: s
 
 
 def query_backend_diagnostic(query: str, session_id: str, jwt_token: str):
-    """Send a query to the RAG backend and return diagnostic info for the UI.
-
-    Returns a dict with keys:
-      - ok: bool
-      - content: str (when ok)
-      - error: str (when not ok)
-      - attempts: list[str] (optional diagnostic lines)
-    """
-    headers = {"Authorization": f"******", "Content-Type": "application/json"}
+    """Send a query to the RAG backend and return diagnostic info for the UI."""
+    headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"}
     try:
         response = _post_with_fallback(
             "rag/query",
             {"query": query, "session_id": session_id},
             headers,
-            timeout=180.0  # Increased timeout to 180s
+            timeout=180.0
         )
         if response.status_code == 200:
             payload = _parse_response(response)
@@ -228,9 +203,7 @@ def query_backend_diagnostic(query: str, session_id: str, jwt_token: str):
 
 
 def get_persisted_docs():
-    """Fetch preview list of persisted documents for the UI document picker.
-    Returns a dict: {"ok": True, "documents": [ {index, snippet, metadata}, ... ]} or error dict.
-    """
+    """Fetch preview list of persisted documents for the UI document picker."""
     for base_url in _candidate_base_urls():
         for path in ("api/rag/persisted_docs", "rag/persisted_docs"):
             try:
@@ -249,14 +222,7 @@ def get_persisted_docs():
 
 
 def get_team_status():
-    """Fetch the Team Navigator status (whether team data is loaded + member list).
-
-    Returns a dict with keys:
-      - ok: bool
-      - navigator_loaded: bool
-      - member_count: int
-      - members: list[str]
-    """
+    """Fetch the Team Navigator status (whether team data is loaded + member list)."""
     for base_url in _candidate_base_urls():
         for path in ("api/rag/team/status", "rag/team/status"):
             try:
