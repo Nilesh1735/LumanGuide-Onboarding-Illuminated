@@ -1,28 +1,22 @@
 import os
 import tempfile
 import logging
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import UploadFile, HTTPException
 
 logger = logging.getLogger(__name__)
 
-# Restore the APIRouter that routes.py is importing
-documents = APIRouter()
-
-@documents.post("/rag/documents/upload")
-async def upload_document(
-    file: UploadFile = File(...),
-    description: str = Form(...),
-):
+def documents(description: str, file: UploadFile) -> bool:
     """
-    Bulletproof document upload for Render's ephemeral file system.
+    Synchronous document upload function.
+    Matches the call signature in routes.py: documents(description, file)
     """
     try:
-        # 1. Read file contents
-        contents = await file.read()
+        # 1. Read file contents synchronously
+        contents = file.file.read()
         
         # 2. Extract text based on file type
         text = ""
-        if file.filename.lower().endswith('.pdf'):
+        if file.filename and file.filename.lower().endswith('.pdf'):
             from pypdf import PdfReader
             import io
             reader = PdfReader(io.BytesIO(contents))
@@ -57,7 +51,7 @@ async def upload_document(
             f.write(description)
             
         logger.info(f"Successfully indexed {len(docs)} chunks from {file.filename}")
-        return {"status": True, "message": f"Successfully indexed {len(docs)} chunks."}
+        return True
         
     except HTTPException:
         raise
