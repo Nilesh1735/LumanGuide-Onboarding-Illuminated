@@ -5,14 +5,14 @@ from fastapi import UploadFile, File, Form, HTTPException
 
 logger = logging.getLogger(__name__)
 
-async def documents(file: UploadFile = File(...), description: str = Form(...)):
+# Synchronous function to avoid 'coroutine' serialization issues in routes.py
+def documents(file: UploadFile = File(...), description: str = Form(...)):
     """
-    Callable function for document upload, designed to be imported and used by routes.py.
-    Bulletproofed for Render's ephemeral file system.
+    Bulletproof document upload for Render's ephemeral file system.
     """
     try:
-        # 1. Read file contents
-        contents = await file.read()
+        # 1. Read file contents synchronously
+        contents = file.file.read()
         
         # 2. Extract text based on file type
         text = ""
