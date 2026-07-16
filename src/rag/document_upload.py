@@ -1,17 +1,24 @@
 import os
 import tempfile
 import logging
-from fastapi import HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 logger = logging.getLogger(__name__)
 
-def process_upload(file, description: str):
+# Restore the APIRouter that routes.py is importing
+documents = APIRouter()
+
+@documents.post("/rag/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    description: str = Form(...),
+):
     """
     Bulletproof document upload for Render's ephemeral file system.
     """
     try:
         # 1. Read file contents
-        contents = file.file.read()
+        contents = await file.read()
         
         # 2. Extract text based on file type
         text = ""
