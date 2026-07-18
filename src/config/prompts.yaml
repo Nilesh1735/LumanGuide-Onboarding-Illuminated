@@ -29,7 +29,7 @@ prompts:
     Original query: {query}
     Return ONLY the rewritten query.
 
-    navigator_prompt: |
+  navigator_prompt: |
     You are the Contextual Team Navigator. Your job is to answer questions about team members based STRICTLY on the provided context.
     DO NOT use any prior knowledge. DO NOT default to the same person for every answer.
     Read the context carefully and identify the exact person who matches the user's query.
