@@ -1,7 +1,7 @@
 import logging
 import os
 import streamlit as st
-from typing import Any
+from typing import Any, Optional
 
 import requests
 
@@ -93,13 +93,13 @@ def get_api_token() -> str:
     return "mock_initial_token"
 
 
-def create_user(username: str, password: str, api_token: str) -> dict:
+def create_user(username: str, email: str, password: str, api_token: str) -> dict:
     """Create a new user account and return a structured result for the UI."""
-    headers = {"X-API-TOKEN": api_token, "Content-Type": "application/json"}
+    headers = {"X-API-MOCK-TOKEN": api_token, "Content-Type": "application/json"}
     try:
         response = _post_with_fallback(
-            "signup",
-            {"username": username, "password": password},
+            "auth/signup",
+            {"username": username, "email": email, "password": password},
             headers,
         )
         if response.status_code == 200:
@@ -113,15 +113,21 @@ def create_user(username: str, password: str, api_token: str) -> dict:
 
 def login_user(username: str, password: str, api_token: str) -> dict:
     """Authenticate user login and return a structured result for the UI."""
-    headers = {"X-API-TOKEN": api_token, "Content-Type": "application/json"}
+    headers = {"X-API-MOCK-TOKEN": api_token, "Content-Type": "application/json"}
     try:
         response = _post_with_fallback(
-            "login",
-            {"username": username, "password": password},
+            "auth/login",
+            {"login_id": username, "password": password},
             headers,
         )
         if response.status_code == 200:
-            return {"ok": True, "data": _parse_response(response)}
+            # Flatten the response so Home.py can easily access the token
+            payload = _parse_response(response)
+            return {
+                "ok": True,
+                "token": payload.get("token"),
+                "user_id": payload.get("user_id")
+            }
 
         return {"ok": False, "error": _error_message(response)}
     except requests.HTTPError as http_err:
@@ -140,7 +146,7 @@ def login_user(username: str, password: str, api_token: str) -> dict:
         return {"ok": False, "error": f"Connection failure: {exc}", "attempts": []}
 
 
-def query_backend(query: str, session_id: str, jwt_token: str, openai_api_key: str = None):
+def query_backend(query: str, session_id: str, jwt_token: str, openai_api_key: Optional[str] = None):
     """Send a query to the RAG backend."""
     headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"}
     

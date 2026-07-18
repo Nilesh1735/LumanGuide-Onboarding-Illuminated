@@ -1,5 +1,4 @@
 import importlib
-
 import streamlit as st
 import requests
 import utils.api_client as api_client
@@ -23,20 +22,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 def is_success(response):
     if isinstance(response, dict):
         return response.get("ok", False)
     return response is True
 
-
 def error_message(response, fallback):
     if isinstance(response, dict):
-        return response.get("error", fallback)
+        return response.get("detail") or response.get("error", fallback)
     if response is False:
         return "The API client returned False without details. Restart Streamlit so it reloads utils/api_client.py."
     return fallback
-
 
 # Wrap the API call in a try-except block to prevent crashes when backend is down
 try:
@@ -56,15 +52,16 @@ if st.session_state.get("api_initialized"):
         with tab1:
             with st.container(border=True):
                 st.subheader("Log in to your account")
-                login_username = st.text_input("Username", key="login_user", placeholder="Enter your username")
+                login_username = st.text_input("Username or Email", key="login_user", placeholder="Enter your username or email")
                 login_password = st.text_input("Password", type="password", key="login_pass", placeholder="Enter your password")
 
                 st.write("") # Margin spacing
                 if st.button("Log in", use_container_width=True, type="primary"):
                     auth_response = api_client.login_user(login_username, login_password, st.session_state["api_token"])
 
-                    if is_success(auth_response) or (login_username == "admin" and login_password == "password"):
-                        st.session_state["jwt_token"] = "mock_token_123"
+                    # STRICT CHECK: Must be ok=True AND contain a real token
+                    if is_success(auth_response) and isinstance(auth_response, dict) and auth_response.get("token"):
+                        st.session_state["jwt_token"] = auth_response.get("token")
                         st.session_state["session_id"] = login_username
                         st.success(f"Welcome back, {login_username}.")
                         st.rerun()
@@ -80,13 +77,15 @@ if st.session_state.get("api_initialized"):
             with st.container(border=True):
                 st.subheader("Create a new account")
                 signup_username = st.text_input("Choose a username", key="signup_user", placeholder="Your username")
+                signup_email = st.text_input("Email", key="signup_email", placeholder="your@email.com")
                 signup_password = st.text_input("Choose a password", type="password", key="signup_pass", placeholder="Minimum 6 characters")
 
                 st.write("") # Margin spacing
                 if st.button("Sign up", use_container_width=True, type="primary"):
-                    if signup_username and signup_password:
+                    if signup_username and signup_email and signup_password:
                         try:
-                            result = api_client.create_user(signup_username, signup_password, st.session_state["api_token"])
+                            # Pass username, email, and password to the API client
+                            result = api_client.create_user(signup_username, signup_email, signup_password, st.session_state["api_token"])
 
                             if is_success(result):
                                 st.success("Account created successfully. Please switch to the Log in tab.")
@@ -95,7 +94,7 @@ if st.session_state.get("api_initialized"):
                         except Exception as e:
                             st.error(f"An unexpected error occurred during signup: {str(e)}")
                     else:
-                        st.warning("Please fill out both fields.")
+                        st.warning("Please fill out all fields.")
 
     else:
         with st.container(border=True):

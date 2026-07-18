@@ -1,8 +1,3 @@
-"""
-API routes for RAG operations and Authentication.
-Updated for State-Driven LangGraph compatibility.
-"""
-
 from fastapi import APIRouter, HTTPException, UploadFile, File, Header, Request
 from langchain_core.messages import HumanMessage, AIMessage
 import asyncio
@@ -23,12 +18,11 @@ router = APIRouter()
 router.include_router(auth_router, tags=["auth"])
 
 @router.post("/rag/query")
-async def rag_query(request: Request, req: QueryRequest):
+async def rag_query(req: QueryRequest):
     """
     Process a RAG query through the State-Driven Adaptive RAG pipeline.
     """
-    # 1. Extract the user's OpenAI Key from the headers (if provided)
-    user_openai_key = request.headers.get("X-OpenAI-Key")
+    # The frontend no longer sends an API key. The backend uses its default LLM router.
     
     chat_history = ChatHistory.get_session_history(req.session_id)
 
@@ -102,12 +96,9 @@ async def rag_query(request: Request, req: QueryRequest):
             try:
                 retriever = get_retriever()
                 docs = []
-                if hasattr(retriever, "get_relevant_documents"):
-                    try: docs = retriever.get_relevant_documents(req.query)
-                    except: pass
-                elif hasattr(retriever, "invoke"):
+                if retriever:
                     try:
-                        invoke_res = retriever.invoke(req.query)
+                        invoke_res = retriever.invoke(req.query)  # type: ignore
                         docs = invoke_res if isinstance(invoke_res, list) else [invoke_res]
                     except: pass
 
@@ -147,11 +138,11 @@ async def rag_query(request: Request, req: QueryRequest):
 
     # 5. Invoke the compiled graph
     try:
-        result = builder.invoke({
+        result = builder.invoke({  # type: ignore
             "messages": messages,
             "latest_query": req.query,
-            "consecutive_errors": 0,
-            "user_openai_key": user_openai_key  # PASS THE KEY TO THE GRAPH STATE
+            "consecutive_errors": 0
+            
         })
     except Exception as exc:
         logger.error("Graph invocation failed: %s", exc)

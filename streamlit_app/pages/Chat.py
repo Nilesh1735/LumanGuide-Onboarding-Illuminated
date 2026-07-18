@@ -39,10 +39,6 @@ if "session_id" not in st.session_state or "jwt_token" not in st.session_state:
     st.warning("Please log in first.")
     st.stop()
 
-# --- RBAC LOGIC: Check if the logged-in user is the Admin ---
-# You can change "admin" to whatever username you want to use.
-is_admin = st.session_state.get("session_id") == "admin"
-
 # --- Sidebar Area ---
 with st.sidebar:
     st.markdown("## Navigation")
@@ -120,23 +116,6 @@ with st.sidebar:
         else:
             st.caption("No persisted documents found.")
 
-    st.divider()
-
-    # Inner Container 5: BYOK (Bring Your Own Key) - Admin vs User Logic
-    with st.container(border=True):
-        st.markdown("#### Engine Configuration")
-        if is_admin:
-            # Admin gets a free pass to use the backend's default LLM
-            st.info("Admin Mode: Using system default AI engine.")
-            st.session_state.pop("user_openai_key", None) # Ensure no key is passed
-        else:
-            # Standard users MUST enter an OpenAI key
-            openai_key_input = st.text_input("OpenAI API Key", type="password", help="Required to use the AI agent.")
-            if openai_key_input:
-                st.session_state["user_openai_key"] = openai_key_input
-                st.success("Key active for this session.")
-            else:
-                st.session_state.pop("user_openai_key", None)
 
 # --- Main Content Area ---
 main_col, feed_col = st.columns([7, 3])
@@ -179,18 +158,10 @@ with main_col:
     user_input = st.chat_input("Ask about legacy code, team structures, or documentation...", key="chat_input")
 
     if user_input:
-        user_key = st.session_state.get("user_openai_key")
-        
-        
-        if not is_admin and not user_key:
-            st.warning(" Please enter your OpenAI API Key in the sidebar to use the agent.")
-            st.stop()
-            
         st.session_state.chat_history.append(("user", user_input))
         
-        # Call the backend. If admin, user_key is None -> backend uses Mistral.
-        # If user, user_key is passed -> backend uses OpenAI.
-        response = api_client.query_backend(user_input, st.session_state["session_id"], st.session_state["jwt_token"], openai_api_key=user_key)
+        # Call the backend. Backend handles the LLM engine automatically.
+        response = api_client.query_backend(user_input, st.session_state["session_id"], st.session_state["jwt_token"], openai_api_key=None)
         
         if isinstance(response, str) and "Error" in response:
             st.session_state.chat_history.append(("assistant", response, None))
