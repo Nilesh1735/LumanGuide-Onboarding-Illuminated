@@ -1,19 +1,20 @@
 <div align="center">
-<a href="https://github.com/Nilesh1735/LumanGuide---Onboarding-Illuminated">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7dd3fc,100:0ea5e9&height=120&section=header" width="100%" />
+<a href="https://github.com/Nilesh1735/LumanGuide-Onboarding-Illuminated">
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:10b981,100:059669&height=120&section=header" width="100%" />
 </a>
 </div>
 
 # LumanGuide - Onboarding, Illuminated
 
 <div align="center">
-<p>An enterprise-grade, intelligent Retrieval-Augmented Generation (RAG) system powered by agentic AI architecture, designed to streamline engineering onboarding and knowledge management.</p>
+<p>An enterprise-grade, intelligent Retrieval-Augmented Generation (RAG) system powered by a LangGraph state machine. Features dynamic LLM routing, real-time agent telemetry, and a premium SaaS UI.</p>
 
 <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
 <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
 <img src="https://img.shields.io/badge/LangGraph-35495E?style=for-the-badge&logo=langchain&logoColor=white" alt="LangGraph" />
 <img src="https://img.shields.io/badge/FAISS-222222?style=for-the-badge&logo=facebook&logoColor=white" alt="FAISS" />
 <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit" />
+<img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
 
 </div>
 
@@ -21,7 +22,7 @@
 
 LumanGuide is a stateful, agentic AI platform that uses a LangGraph state machine to intelligently route queries to the most appropriate data source—indexed internal documents (FAISS), general LLM knowledge, or real-time web search (Tavily). 
 
-Unlike standard RAG implementations, LumanGuide features a Resilient Fallback Architecture (NVIDIA NIM and SQLite), a Contextual Team Navigator for SME routing, LLMOps observability (LangSmith), and a robust AppSec suite to prevent prompt injection and secret leakage.
+Unlike standard RAG implementations, LumanGuide features a **Dynamic 3-Tier LLM Router** (Mistral → OpenAI → Gemini), a **Contextual Team Navigator** for SME routing, **MongoDB Atlas** for persistent cloud chat history, and a robust AppSec suite to prevent prompt injection and secret leakage. The frontend is built as a premium B2B SaaS application, featuring a split-screen landing page, live system telemetry, and an agent thought-process terminal.
 
 ## Tech Stack
 
@@ -34,19 +35,19 @@ Unlike standard RAG implementations, LumanGuide features a Resilient Fallback Ar
 </tr>
 <tr>
 <td>AI & GenAI</td>
-<td>LangChain, LangGraph, Google Gemini, OpenAI API, Tavily, FAISS</td>
+<td>LangChain, LangGraph, Mistral AI, OpenAI, Google Gemini, Tavily, FAISS</td>
 </tr>
 <tr>
 <td>Backend</td>
-<td>FastAPI, Pydantic, MongoDB (Motor), SQLite</td>
+<td>FastAPI, Pydantic, MongoDB Atlas (Motor), JWT Bcrypt Auth</td>
 </tr>
 <tr>
 <td>Frontend</td>
-<td>Streamlit, Custom CSS, streamlit-agraph</td>
+<td>Streamlit, Space Grotesk/Mono Typography, Custom CSS</td>
 </tr>
 <tr>
 <td>Security & LLMOps</td>
-<td>JWT (RBAC), LangSmith, pip-audit, Regex Secret Scanner</td>
+<td>JWT RBAC, LangSmith, pip-audit, Regex Secret Scanner</td>
 </tr>
 </table>
 
@@ -54,42 +55,37 @@ Unlike standard RAG implementations, LumanGuide features a Resilient Fallback Ar
 
 <img src="https://skillicons.dev/icons?i=python" alt="Python" />
 <img src="https://skillicons.dev/icons?i=fastapi" alt="FastAPI" />
+<img src="https://skillicons.dev/icons?i=mongodb" alt="MongoDB" />
 <img src="https://skillicons.dev/icons?i=sqlite" alt="SQLite" />
-<img src="https://skillicons.dev/icons?i=postgres" alt="PostgreSQL" />
 <img src="https://skillicons.dev/icons?i=aws" alt="AWS" />
-<br><br>
-<img src="https://skillicons.dev/icons?i=scikitlearn" alt="Scikit-learn" />
-<img src="https://skillicons.dev/icons?i=tensorflow" alt="Transformers/BERT" />
 <br><br>
 <img src="https://skillicons.dev/icons?i=git" alt="Git" />
 <img src="https://skillicons.dev/icons?i=github" alt="GitHub" />
 <img src="https://skillicons.dev/icons?i=docker" alt="Docker" />
-<img src="https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white" alt="Jupyter" />
 
 </div>
 
-## Enterprise Architecture Upgrades
+## Enterprise Architecture & UI Upgrades
 
 This repository includes production-grade, enterprise-level architectural implementations:
 
-1. **LLMOps Observability (`src/core/telemetry.py`):** LangSmith integration with a `@trace_node` decorator that logs inputs, outputs, and token usage for every step in the LangGraph workflow.
-2. **Agentic Slack Tool (`src/tools/slack_tool.py`):** A LangChain `BaseTool` allowing the AI agent to physically post messages to Slack channels to notify SMEs.
-3. **Multimodal Vision Ingestion (`src/rag/multimodal_ingestor.py`):** Converts PDF diagrams to images and uses GPT-4o to transcribe them into Markdown.
-4. **Automated RAG Evaluation (`tests/eval_pipeline.py`):** A CI/CD-ready script using RAGAS to calculate `faithfulness`, `answer_relevancy`, and `context_precision`.
+1. **Dynamic 3-Tier LLM Router (`src/llms/openai.py`):** Automatically falls back from Mistral → OpenAI → Google Gemini based on API availability and rate limits, ensuring zero downtime.
+2. **Premium SaaS UI (`streamlit_app/`):** A custom-built split-screen landing page with live system telemetry, Space Grotesk typography, and a Dark Emerald theme.
+3. **Agent Telemetry Terminal:** Real-time UI logging that displays the LangGraph state machine's execution steps (e.g., *Synthesizing, Untangling, Crunching*) to the user.
+4. **RAG Transparency:** Source citation badges and an "Inspect retrieved context" expander for every AI response, proving zero hallucination.
 5. **AppSec Security Suite:**
    - **Security Headers Middleware:** Enforces CSP, HSTS, X-Frame-Options.
    - **Secret Scanner:** Scans uploaded documents for AWS keys, JWTs, and Slack tokens before embedding, redacting them as `[REDACTED_SECRET]`.
-   - **Prompt Injection Guardrail:** A LangGraph node that blocks jailbreak attempts and sanitizes NoSQL/template injection vectors.
+   - **Prompt Injection Guardrail:** A LangGraph node that blocks jailbreak attempts.
    - **RBAC (`src/security/rbac.py`):** JWT-based Role-Based Access Control (admin > contributor > viewer).
 
 ## System Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                           │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│               Streamlit Web Application (Custom Theme)         │ │
-│  • Auth (Login/Signup) • Chat • Document Upload • Team Graph   │ │
+│                    Streamlit Web Application                     │
+│  • Split-Screen Auth • Live Telemetry • Agent Terminal UI       │
+│  • Team Navigator Grid • Source Citation Badges                 │
 └───────────────────────────────────┬─────────────────────────────┘
                                     ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -111,41 +107,39 @@ This repository includes production-grade, enterprise-level architectural implem
 └───────────────────────────────────┬─────────────────────────────┘
           ↓                 ↓                 ↓
 ┌─────────────────┐ ┌──────────────┐ ┌──────────────────┐
-│  Retriever      │ │  General LLM │ │  Web Search      │
-│  (FAISS + Vision│ │  (Gemini/    │ │  (Tavily)        │
-│   Multimodal)   │ │   OpenAI)    │ │                  │
+│  Retriever      │ │  Dynamic LLM │ │  Web Search      │
+│  (FAISS + Gemini│ │  Router      │ │  (Tavily)        │
+│   Embeddings)   │ │  (Mistral/OAI│ │                  │
 └─────────────────┘ └──────────────┘ └──────────────────┘
+          ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    MongoDB Atlas (Cloud)                         │
+│       Persistent User Auth & Chat History Isolation             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Project Structure
 
 ```text
 LumanGuide/
-├── .github/workflows/
-│   └── dependency-audit.yml     # pip-audit CI/CD integration
 ├── data/
 │   └── team_config.yaml         # Contextual Team Navigator SME list
 ├── src/
 │   ├── main.py                  # FastAPI app entry & middleware setup
 │   ├── api/
 │   │   ├── routes.py            # RAG query, document, and team endpoints
-│   │   └── auth.py              # Login, Signup, JWT generation
+│   │   └── auth.py              # Login, Signup, JWT & Bcrypt generation
 │   ├── core/
 │   │   ├── config.py            # Settings loader
 │   │   ├── logger.py            # Logging setup
 │   │   └── telemetry.py         # LangSmith LLMOps tracing
+│   ├── db/
+│   │   └── mongo_client.py      # MongoDB Atlas async client (Motor)
 │   ├── llms/
-│   │   ├── openai.py            # Primary LLM (Gemini/OpenAI)
+│   │   ├── openai.py            # Dynamic 3-Tier LLM Router
 │   │   └── router.py            # NVIDIA NIM fallback router
-│   ├── memory/
-│   │   ├── chat_history_mongo.py# MongoDB persistent history
-│   │   ├── chat_history_sqlite.py# SQLite persistent fallback
-│   │   └── chathistory_in_memory.py
-│   ├── ml_pipeline/
-│   │   └── intent_classifier.py # BERT + TF + Random Forest router
 │   ├── rag/
 │   │   ├── graph_builder.py     # LangGraph state machine construction
-│   │   ├── nodes.py             # Graph node implementations
 │   │   ├── guardrail_node.py    # Prompt injection defense
 │   │   ├── multimodal_ingestor.py # GPT-4o Vision PDF processing
 │   │   ├── retriever_setup.py   # FAISS vector store setup
@@ -160,12 +154,14 @@ LumanGuide/
 │       ├── graph_tools.py       # Graph routing logic
 │       └── slack_tool.py        # Agentic Slack notification tool
 ├── streamlit_app/
-│   ├── Home.py                  # Authentication and login page
+│   ├── Home.py                  # Split-screen SaaS landing & auth page
 │   ├── pages/
-│   │   ├── Chat.py              # Chat interface and document upload
-│   │   └── Admin_Telemetry.py   # LangSmith dashboard embed
-│   └── components/
-│       └── team_graph.py        # 3D interactive team graph (streamlit-agraph)
+│   │   └── Chat.py              # Chat interface, telemetry terminal, UI
+│   ├── components/
+│   │   └── team_graph.py        # Interactive team graph logic
+│   └── utils/
+│       ├── api_client.py        # Backend HTTP client
+│       └── theme.py             # Dark Emerald CSS & Space Grotesk fonts
 ├── tests/
 │   └── eval_pipeline.py         # RAGAS automated evaluation script
 ├── .env.example                 # Environment variable template
@@ -176,16 +172,16 @@ LumanGuide/
 ## Getting Started
 
 ### Prerequisites
-- **Python 3.12+** (Do not use Python 3.14 due to `traceback.py` bugs)
-- **Poppler** (for PDF image rasterization in multimodal ingestion)
-- API Keys: Google Gemini (AI Studio), OpenAI (for Vision), Tavily (for Search)
+- **Python 3.12+** 
+- API Keys: Google Gemini (AI Studio), Mistral AI, OpenAI, Tavily (for Search)
+- MongoDB Atlas connection string (for cloud auth & history)
 
 ### Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Nilesh1735/LumanGuide---Onboarding-Illuminated.git
-   cd LumanGuide---Onboarding-Illuminated
+   git clone https://github.com/Nilesh1735/LumanGuide-Onboarding-Illuminated.git
+   cd LumanGuide-Onboarding-Illuminated
    ```
 
 2. **Create and activate a virtual environment:**
@@ -206,22 +202,16 @@ Create a `.env` file in the project root. **Never commit this file.**
 ```env
 # --- Core AI Configuration ---
 GOOGLE_API_KEY=AIzaSyYOUR_GEMINI_KEY
+MISTRAL_API_KEY=YOUR_MISTRAL_KEY
 OPENAI_API_KEY=sk-YOUR_OPENAI_KEY
 TAVILY_API_KEY=tvly-YOUR_TAVILY_KEY
 
-# --- LLM Fallback (NVIDIA NIM) ---
-NVIDIA_NIM_BASE_URL=http://localhost:8000/v1
-NVIDIA_NIM_MODEL=meta-llama/Llama-3-8B-Instruct
-
-# --- Database (MongoDB - Optional) ---
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=lumanguide
+# --- Database (MongoDB Atlas) ---
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
 
 # --- Security & RBAC ---
 JWT_SECRET=YOUR_SUPER_SECRET_JWT_KEY_HERE
 JWT_ALGORITHM=HS256
-LUMANGUIDE_ADMIN_USER=admin
-LUMANGUIDE_ADMIN_PASSWORD=ChangeThisPassword123!
 
 # --- LLMOps (LangSmith) ---
 LANGCHAIN_TRACING_V2=true
@@ -243,53 +233,8 @@ python -m uvicorn src.main:app --reload --port 8000
 ```powershell
 python -m streamlit run streamlit_app/Home.py
 ```
-*(Using `python -m streamlit` bypasses Windows Application Control policy blocks on `.exe` files).*
 
 Access the application at `http://localhost:8501`.
-
-## API Endpoints
-
-### Query the RAG System
-```http
-POST /api/rag/query
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
-
-{
-  "query": "What is the main topic of the document?",
-  "session_id": "user_session_123"
-}
-```
-
-### Upload Document (Requires `contributor` or `admin` role)
-```http
-POST /api/rag/documents/upload
-Authorization: Bearer <JWT_TOKEN>
-X-Description: Engineering Runbook 2024
-
-Form Data:
-- file: <PDF or TXT file>
-```
-
-## Security and RBAC
-
-LumanGuide implements a strict security posture:
-1. **Transport Security:** The FastAPI middleware injects `Content-Security-Policy`, `X-Frame-Options: DENY`, and `Strict-Transport-Security`.
-2. **Secret Scanning:** Before any document is chunked and embedded into FAISS, `src/security/secret_scanner.py` regex-scans the text for AWS keys, Slack tokens, JWTs, and PEM private keys, replacing them with `[REDACTED_SECRET]`.
-3. **Prompt Injection Defense:** The LangGraph `guardrail_node` intercepts queries attempting to override system prompts (e.g., "ignore previous instructions") and returns a `403 Forbidden`.
-4. **Role-Based Access Control:** JWT-based authentication. Users are assigned `admin`, `contributor`, or `viewer` roles. Document ingestion requires `contributor` privileges.
-
-## Testing and Evaluation
-
-### Automated RAG Evaluation (RAGAS)
-Run the RAGAS evaluation pipeline to test AI accuracy, faithfulness, and context precision against a synthetic golden dataset.
-
-```bash
-python -m tests.eval_pipeline
-```
-
-### Dependency Auditing
-A GitHub Actions workflow (`.github/workflows/dependency-audit.yml`) runs `pip-audit` on every push to ensure no known high-severity CVEs are present in the supply chain.
 
 ## Connect With Me
 
@@ -306,7 +251,7 @@ A GitHub Actions workflow (`.github/workflows/dependency-audit.yml`) runs `pip-a
 
 <div align="center">
 <a href="https://github.com/Nilesh1735">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7dd3fc,100:0ea5e9&height=120&section=footer" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:10b981,100:059669&height=120&section=footer" width="100%" />
 </a>
 </div>
 ```
