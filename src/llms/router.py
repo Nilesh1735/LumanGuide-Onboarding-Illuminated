@@ -1,197 +1,276 @@
-"""
-Resilient LLM router with automatic fallback to a local NVIDIA NIM endpoint.
-
-Primary provider is OpenAI. If a request to the primary fails with a
-connection error, timeout, or rate-limit error, the router transparently
-retries the request against a self-hosted open-source model (for example,
-meta-llama/Llama-3-8B) served through NVIDIA NIM via the
-``langchain_nvidia_ai_endpoints`` package.
-
-The router is implemented with LangChain's native ``with_fallbacks``
-mechanism, so the returned object remains a fully fledged Runnable. It
-therefore supports ``invoke``, ``with_structured_output``, ``bind_tools``
-and chain composition (``prompt | llm``), making it a drop-in replacement
-for the single-provider ``llm`` exposed by ``src.llms.openai``.
-"""
-
-from __future__ import annotations
-
+from fastapi import APIRouter, HTTPException, UploadFile, File, Header
+from langchain_core.messages import HumanMessage, AIMessage
+import asyncio
 import logging
-import os
-from typing import Any, List, Optional
+from src.api.auth import auth_router
+from src.memory.chat_history_mongo import ChatHistory
+from src.models.query_request import QueryRequest
+from src.rag.document_upload import documents
+from src.rag.graph_builder import builder
+from src.rag.retriever_setup import get_retriever, get_all_documents
+from src.navigator.team_loader import load_team_config, team_config_to_documents
+import re
 
 logger = logging.getLogger(__name__)
 
+# Initialize router and include auth routes
+router = APIRouter()
+router.include_router(auth_router, tags=["auth"])
 
-def _build_primary_llm():
-    """Construct the primary OpenAI-backed chat model.
-
-    Reads credentials from the environment. Raises a descriptive error if
-    the required configuration is missing so the caller can decide whether
-    to skip the primary provider entirely.
-
-    Returns:
-        A configured ``ChatOpenAI`` instance.
-
-    Raises:
-        RuntimeError: If ``OPENAI_API_KEY`` is not set in the environment.
+@router.post("/rag/query")
+async def rag_query(req: QueryRequest):
     """
-    from langchain_openai import ChatOpenAI
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not configured in the environment.")
-
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    request_timeout = float(os.getenv("OPENAI_REQUEST_TIMEOUT", "30"))
-    max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
-
-    logger.info("Primary LLM configured: provider=openai model=%s", model_name)
-    return ChatOpenAI(
-        model=model_name,
-        api_key=api_key,
-        timeout=request_timeout,
-        max_retries=max_retries,
-    )
-
-
-def _build_fallback_llm():
-    """Construct the NVIDIA NIM fallback chat model.
-
-    The model is expected to be served by a local (or private) NVIDIA NIM
-    deployment. Both the base URL of the NIM server and the model identifier
-    are configurable through environment variables so this file never hard
-    codes infrastructure details.
-
-    Returns:
-        A configured ``ChatNVIDIA`` instance.
-
-    Raises:
-        RuntimeError: If the NIM base URL is not configured.
+    Process a RAG query through the State-Driven Adaptive RAG pipeline.
     """
-    from langchain_nvidia_ai_endpoints import ChatNVIDIA
+    chat_history = ChatHistory.get_session_history(req.session_id)
 
-    base_url = os.getenv("NVIDIA_NIM_BASE_URL") or os.getenv("NVIDIA_BASE_URL")
-    if not base_url:
-        raise RuntimeError(
-            "NVIDIA_NIM_BASE_URL is not configured; cannot initialize the "
-            "NVIDIA NIM fallback provider."
-        )
+    try:
+        asyncio.create_task(chat_history.add_message(HumanMessage(content=req.query)))
+    except Exception as exc:
+        logger.warning("Failed to schedule history write: %s", exc)
 
-    api_key = os.getenv("NVIDIA_API_KEY", "local-nim-no-auth")
-    model_name = os.getenv("NVIDIA_NIM_MODEL", "meta-llama/Llama-3-8B-Instruct")
-    temperature = float(os.getenv("NVIDIA_NIM_TEMPERATURE", "0.2"))
-    request_timeout = float(os.getenv("NVIDIA_NIM_TIMEOUT", "60"))
+    try:
+        messages = await asyncio.wait_for(chat_history.get_messages(), timeout=3.0)
+        # FIX: Ensure the current user query is strictly the last message in the list
+        if not messages:
+            messages = [HumanMessage(content=req.query)]
+        else:
+            # Append the current query to guarantee it's the final HumanMessage
+            messages.append(HumanMessage(content=req.query))
+    except Exception as exc:
+        logger.warning("Could not load chat history (falling back to single-message context): %s", exc)
+        messages = [HumanMessage(content=req.query)]
 
-    logger.info("Fallback LLM configured: provider=nvidia_nim model=%s", model_name)
-    return ChatNVIDIA(
-        base_url=base_url,
-        model=model_name,
-        api_key=api_key,
-        temperature=temperature,
-        request_timeout=request_timeout,
-    )
+    # Explicit file fallback
+    try:
+        trigger_phrase = bool(re.search(r"\b(from this file|provide answer from this file|answer from this file|from the uploaded file)\b", req.query, re.I))
+        trigger_use_latest = getattr(req, 'use_latest', False)
+        trigger_index = getattr(req, 'persisted_doc_index', None)
 
+        if trigger_phrase or trigger_use_latest or (trigger_index is not None):
+            persisted_docs = get_all_documents()
+            if not persisted_docs:
+                answer = "No persisted documents were found to answer from. Please upload a file first."
+                try:
+                    asyncio.create_task(chat_history.add_message(AIMessage(content=answer)))
+                except Exception:
+                    pass
+                return {"result": {"content": answer, "diagnostics": {"docs_scanned": 0}}}
 
-def _fallback_exception_types() -> List[type]:
-    """Return the exception types that should trigger a fallback.
+            chosen = None
+            if trigger_use_latest:
+                chosen = persisted_docs[-1]
+            elif trigger_index is not None:
+                try:
+                    idx = int(trigger_index)
+                    if idx < 0: idx = len(persisted_docs) + idx
+                    if 0 <= idx < len(persisted_docs): chosen = persisted_docs[idx]
+                except Exception:
+                    chosen = None
+            elif trigger_phrase:
+                chosen = persisted_docs[-1]
 
-    These cover the explicit failure modes requested: connection errors,
-    timeouts, and rate limits. Generic ``Exception`` is intentionally kept
-    as a last resort so that any unexpected provider fault still degrades
-    gracefully rather than surfacing a 500 to the caller. Missing optional
-    exception classes are skipped silently so import never fails when an
-    SDK version differs.
-    """
-    types: List[type] = []
+            if chosen is None:
+                answer = "Could not locate the requested persisted document (index may be out of range)."
+                try:
+                    asyncio.create_task(chat_history.add_message(AIMessage(content=answer)))
+                except Exception:
+                    pass
+                return {"result": {"content": answer, "diagnostics": {"docs_scanned": len(persisted_docs)}}}
 
-    candidate_paths = (
-        ("openai", "APITimeoutError"),
-        ("openai", "APIConnectionError"),
-        ("openai", "RateLimitError"),
-        ("openai", "APIError"),
-        ("httpcore", "ConnectError"),
-        ("httpx", "ConnectTimeout"),
-        ("httpx", "ReadTimeout"),
-    )
-    for module_name, attr in candidate_paths:
+            text = chosen.page_content if hasattr(chosen, 'page_content') else str(chosen)
+            clean_text = text.replace('\ufeff', '').strip()
+            snippet = clean_text[:4000]
+            reply = f"Answering from the selected persisted document:\n\n{snippet}"
+            diagnostics = {"docs_scanned": 1, "sample_snippet": snippet[:200]}
+            
+            try:
+                asyncio.create_task(chat_history.add_message(AIMessage(content=reply)))
+            except Exception:
+                pass
+            return {"result": {"content": reply, "diagnostics": diagnostics}}
+    except Exception as e:
+        logger.exception("Explicit-file fallback failed: %s", e)
+
+    # 4. Quick rule-based handlers for simple numeric queries
+    try:
+        numeric_q_pattern = re.compile(r"\b(max|biggest|largest|highest|min|minimum|lowest|smallest|how many|count|sum|total|multiply|product)\b", re.I)
+        if numeric_q_pattern.search(req.query):
+            logger.info("Numeric fallback triggered for query: %s", req.query)
+            try:
+                retriever = get_retriever()
+                docs = []
+                if retriever:
+                    try:
+                        invoke_res = retriever.invoke(req.query)  # type: ignore
+                        docs = invoke_res if isinstance(invoke_res, list) else [invoke_res]
+                    except: pass
+
+                number_pattern = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+                found_numbers = []
+                docs_searched = 0
+                sample_snippet = None
+                for d in docs:
+                    text = d.page_content if hasattr(d, "page_content") else str(d)
+                    if text:
+                        docs_searched += 1
+                        if sample_snippet is None: sample_snippet = text[:200]
+                        for m in number_pattern.findall(text):
+                            try: found_numbers.append(float(m))
+                            except: continue
+
+                if found_numbers:
+                    q = req.query.lower()
+                    if re.search(r"\b(min|minimum|lowest|smallest)\b", q): res_val, op_name = min(found_numbers), "lowest"
+                    elif re.search(r"\b(sum|total)\b", q): res_val, op_name = sum(found_numbers), "sum"
+                    elif re.search(r"\b(multiply|product)\b", q):
+                        prod = 1.0
+                        for n in found_numbers: prod *= n
+                        res_val, op_name = prod, "product"
+                    elif re.search(r"\b(count|how many)\b", q): res_val, op_name = len(found_numbers), "count"
+                    else: res_val, op_name = max(found_numbers), "largest"
+
+                    display_val = str(int(res_val)) if float(res_val).is_integer() else f"{res_val:.6g}"
+                    answer = f"The {op_name} value found in documents is: {display_val}"
+                    diagnostics = {"docs_scanned": docs_searched, "sample_snippet": sample_snippet}
+                    asyncio.create_task(chat_history.add_message(AIMessage(content=answer)))
+                    return {"result": {"content": answer, "diagnostics": diagnostics}}
+            except Exception as e:
+                logger.debug("Numeric fallback failed: %s", e)
+    except Exception:
+        pass
+
+    # 5. Invoke the compiled graph
+    try:
+        result = builder.invoke({  # type: ignore
+            "messages": messages,
+            "latest_query": req.query,
+            "consecutive_errors": 0
+        })
+    except Exception as exc:
+        logger.error("Graph invocation failed: %s", exc)
         try:
-            module = __import__(module_name)
-            exc = getattr(module, attr, None)
-            if isinstance(exc, type) and issubclass(exc, BaseException):
-                types.append(exc)
-        except Exception:  # noqa: BLE001 - optional dependency, ignore silently
-            continue
+            persisted_docs = get_all_documents()
+            if persisted_docs:
+                snippets = [ (d.page_content if hasattr(d,'page_content') else str(d)).strip()[:400] for d in persisted_docs[:3] ]
+                if snippets:
+                    reply = "I couldn't reach the configured LLM, but here are top snippets from your persisted documents:\n\n" + "\n\n---\n\n".join(snippets)
+                    diagnostics = {"docs_scanned": len(persisted_docs), "sample_snippet": snippets[0]}
+                    try: asyncio.create_task(chat_history.add_message(AIMessage(content=reply)))
+                    except: pass
+                    return {"result": {"content": reply, "diagnostics": diagnostics}}
+        except Exception as ret_exc:
+            logger.exception("Retrieval-only fallback also failed: %s", ret_exc)
 
-    types.append(Exception)
-    return types
+        fallback_text = "The RAG pipeline encountered an error while processing your query. This usually means the configured LLM is unavailable."
+        try: asyncio.create_task(chat_history.add_message(AIMessage(content=fallback_text)))
+        except: pass
+        return {"result": {"content": fallback_text}}
 
-
-def get_llm() -> Any:
-    """Build and return the resilient router LLM.
-
-    The returned object is a ``RunnableWithFallbacks`` built from
-    ``primary.with_fallbacks([fallback])``. It preserves the full Runnable
-    interface, including ``invoke``, ``with_structured_output``,
-    ``bind_tools`` and the ``|`` composition operator.
-
-    If only the primary provider is available, that provider is returned
-    directly. If neither is available, ``None`` is returned and the caller
-    is expected to fall back to its own retrieval-only / mock path.
-
-    Returns:
-        A Runnable chat model with fallback behaviour, the primary model
-        alone, or ``None`` if no provider could be configured.
-    """
-    primary: Optional[Any] = None
-    fallback: Optional[Any] = None
+    output_message = result["messages"][-1]
+    output_text = output_message.content
 
     try:
-        primary = _build_primary_llm()
-    except Exception as exc:  # noqa: BLE001 - configuration/runtime fault
-        logger.warning("Primary LLM unavailable: %s", exc)
+        asyncio.create_task(chat_history.add_message(AIMessage(content=output_text)))
+    except Exception as exc:
+        logger.warning("Failed to schedule assistant message write: %s", exc)
 
+    # FIX: Return a clean dictionary with just the text string
+    return {"result": {"content": output_text}}
+
+@router.get("/rag/persisted_docs")
+def list_persisted_docs():
+    """Return a list of persisted documents with short snippets and metadata for the UI document picker."""
     try:
-        fallback = _build_fallback_llm()
-    except Exception as exc:  # noqa: BLE001 - configuration/runtime fault
-        logger.warning("NVIDIA NIM fallback unavailable: %s", exc)
+        docs = get_all_documents()
+        out = []
+        for i, d in enumerate(docs):
+            text = d.page_content if hasattr(d, 'page_content') else str(d)
+            snippet = (text.replace('\ufeff', '').strip()[:400]) if text else ""
+            meta = d.metadata if hasattr(d, 'metadata') else {}
+            out.append({"index": i, "snippet": snippet, "metadata": meta})
+        return {"documents": out}
+    except Exception as exc:
+        logger.exception("Failed to list persisted docs: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
-    if primary is not None and fallback is not None:
-        exceptions = _fallback_exception_types()
-        logger.info(
-            "LLM router active: primary=openai fallback=nvidia_nim "
-            "fallback_exceptions=%d",
-            len(exceptions),
-        )
-        return primary.with_fallbacks(
-            fallbacks=[fallback],
-            exceptions_to_handle=exceptions,
-        )
+@router.post("/rag/documents/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    description: str = Header(..., alias="X-Description")
+):
+    """Upload a document for RAG processing."""
+    try:
+        status_upload = documents(description, file)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Document upload failed: {exc}") from exc
+    return {"status": status_upload}
 
-    if primary is not None:
-        logger.info("LLM router active: primary=openai only (no fallback configured).")
-        return primary
+@router.post("/rag/team/upload")
+async def upload_team_config_endpoint(file: UploadFile = File(...)):
+    """Ingest a team_config.yaml file into the shared FAISS vector index."""
+    import tempfile
+    import os
 
-    if fallback is not None:
-        logger.info("LLM router active: nvidia_nim only (primary unavailable).")
-        return fallback
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-    logger.error(
-        "LLM router could not configure any provider; returning None. "
-        "Set OPENAI_API_KEY and/or NVIDIA_NIM_BASE_URL."
-    )
-    return None
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".yaml", delete=False) as tmp:
+            tmp.write(raw)
+            tmp_path = tmp.name
 
+        try:
+            team_data = load_team_config(path=tmp_path)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Could not parse YAML: {exc}") from exc
 
-# Module-level instance for drop-in compatibility with
-# ``from src.llms.openai import llm``. Import failures are swallowed so that
-# importing this module never crashes the application; callers that need a
-# guaranteed handle should call ``get_llm()`` directly.
-try:
-    llm = get_llm()
-except Exception as exc:  # noqa: BLE001 - never let module import fail
-    logger.exception("Failed to initialize LLM router at import time: %s", exc)
-    llm = None
+        docs = team_config_to_documents(team_data, tenant_id="default_tenant")
+        if not docs:
+            raise HTTPException(status_code=400, detail="Team config parsed but produced no documents.")
 
+        from src.rag.retriever_setup import add_documents_to_retriever
+        try:
+            add_documents_to_retriever(docs, tenant_id="default_tenant")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"FAISS ingestion failed: {exc}") from exc
 
-__all__ = ["get_llm", "llm"]
+        return {"status": "ok", "members_ingested": len(team_data), "documents_ingested": len(docs)}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try: os.unlink(tmp_path)
+            except: pass
+
+@router.get("/rag/team/status")
+def team_status():
+    """Return whether team navigator data is loaded, plus the count of team profile documents."""
+    try:
+        docs = get_all_documents()
+        team_docs = [
+            d for d in docs
+            if (d.metadata if hasattr(d, 'metadata') else {}).get("doc_type") == "team_profile"
+        ]
+        member_names = set()
+        for d in team_docs:
+            meta = d.metadata if hasattr(d, 'metadata') else {}
+            member_names.add(meta.get("team_member_name", "Unknown"))
+
+        return {
+            "navigator_loaded": len(team_docs) > 0,
+            "team_doc_count": len(team_docs),
+            "member_count": len(member_names),
+            "members": sorted(member_names),
+        }
+    except Exception as exc:
+        logger.exception("Team status check failed: %s", exc)
+        return {
+            "navigator_loaded": False,
+            "team_doc_count": 0,
+            "member_count": 0,
+            "members": [],
+            "error": str(exc),
+        }
