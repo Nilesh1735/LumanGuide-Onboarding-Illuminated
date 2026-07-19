@@ -5,7 +5,7 @@ from utils.theme import get_custom_css
 from streamlit_feedback import streamlit_feedback
 import re
 import time
-import random
+import concurrent.futures
 
 api_client = importlib.reload(api_client)
 
@@ -22,9 +22,7 @@ with col_title:
 
 with col_clear:
     if st.button("Clear Chat", use_container_width=True):
-        # Clear UI history
         st.session_state.chat_history = []
-        # Generate a new session ID to reset backend MongoDB memory
         st.session_state.session_id = f"{st.session_state.get('login_user', 'user')}_{int(time.time())}"
         st.rerun()
 
@@ -146,14 +144,12 @@ with main_col:
                 sources = item[2] if len(item) >= 3 else []
                 context_chunks = item[3] if len(item) >= 4 else []
                 
-                # Ensure sources is always a list for the UI
                 if isinstance(sources, str):
                     sources = [sources]
                 
                 with st.chat_message(role):
                     st.markdown(text)
                     
-                    # Render Source Citation Badges
                     if sources:
                         badges_html = "<div style='margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'>"
                         for s in sources:
@@ -165,7 +161,6 @@ with main_col:
                         badges_html += "</div>"
                         st.markdown(badges_html, unsafe_allow_html=True)
                     
-                    # Retrieved Context Expander
                     if context_chunks:
                         with st.expander(f"Inspect retrieved context ({len(context_chunks)} chunks)", expanded=False):
                             for chunk in context_chunks:
@@ -194,14 +189,37 @@ with main_col:
     if user_input:
         st.session_state.chat_history.append(("user", user_input))
         
-        loading_words = ["Synthesizing", "Orchestrating", "Untangling", "Crunching", "Mulling", "Percolating", "Wrangling", "Cogitating"]
+        # The full list of Cerebral, Culinary, Systems, and Playful words!
+        loading_words = [
+            "Pondering", "Mulling", "Contemplating", "Cogitating", "Deliberating", "Ruminating", "Musing", "Considering",
+            "Brewing", "Marinating", "Percolating", "Simmering", "Stewing", "Baking", "Cooking",
+            "Synthesizing", "Assembling", "Calibrating", "Orchestrating", "Untangling", "Wrangling", "Crunching",
+            "Noodling", "Vibing", "Puttering", "Moseying", "Herding"
+        ]
         
-        with st.status(f"{random.choice(loading_words)} query...", expanded=True) as status:
+        with st.status("Initializing query...", expanded=True) as status:
             st.write("Parsing vector embeddings...")
-            time.sleep(0.3)
-            st.write("Evaluating document relevance...")
             
-            response = api_client.query_backend(user_input, st.session_state["session_id"], st.session_state["jwt_token"], openai_api_key=None)
+            # Run the API request in a background thread so the UI can rotate!
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    api_client.query_backend, 
+                    user_input, 
+                    st.session_state["session_id"], 
+                    st.session_state["jwt_token"], 
+                    None
+                )
+                
+                idx = 0
+                # Rotate the words while the backend is thinking
+                while not future.done():
+                    word = loading_words[idx % len(loading_words)]
+                    status.update(label=f"{word} query...")
+                    time.sleep(0.8)
+                    idx += 1
+                
+                # Get the result once the thread finishes
+                response = future.result()
             
             if isinstance(response, dict) and "content" in response:
                 content = response.get("content", "Error: No content returned.")
@@ -212,7 +230,6 @@ with main_col:
                     st.session_state.chat_history.append(("assistant", content, [], []))
                 else:
                     st.write("Synthesizing final response...")
-                    # Extract ALL sources from the text to render as badges
                     sources = re.findall(r'\[Source:\s*(.*?)\]', content)
                     clean_response = re.sub(r'\[Source:\s*.*?\]', '', content).strip()
                     
