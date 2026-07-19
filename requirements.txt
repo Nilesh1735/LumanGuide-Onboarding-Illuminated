@@ -18,13 +18,13 @@ uvicorn
 motor
 pymongo
 streamlit
+streamlit-agraph
+streamlit-feedback
 langchain-qdrant
 python-multipart
 langsmith
 pypdf
 PyJWT
 passlib[bcrypt]
-bcrypt==4.0.1
-streamlit-feedback
+bcrypt
 google-generativeai
-langchain-google-genai

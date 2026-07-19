@@ -3,7 +3,11 @@ import streamlit as st
 import utils.api_client as api_client
 from utils.theme import get_custom_css
 from streamlit_feedback import streamlit_feedback
+from components.team_graph import render_team_graph
 import re
+import os
+import yaml
+import time
 
 api_client = importlib.reload(api_client)
 
@@ -78,23 +82,32 @@ with st.sidebar:
 
     st.divider()
 
-    # Inner Container 3: Team Navigator Map
+    # Inner Container 3: Interactive Team Navigator Graph
     with st.container(border=True):
         st.markdown("#### Team Navigator Map")
-        try:
-            nav_status = api_client.get_team_status()
-        except Exception:
-            nav_status = None
-
-        if isinstance(nav_status, dict) and nav_status.get("navigator_loaded"):
-            st.success(f"Team data active: {nav_status.get('member_count', 0)} SME(s)")
-            members = nav_status.get("members", [])
-            if members:
-                with st.expander(f"View {len(members)} team member(s)", expanded=False):
-                    for m in members:
-                        st.markdown(f"- {m}")
+        
+        # Load team_config.yaml to populate the graph
+        team_data = []
+        config_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "team_config.yaml")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    yaml_data = yaml.safe_load(f)
+                    if yaml_data and "team" in yaml_data:
+                        team_data = yaml_data["team"]
+            except Exception:
+                pass
+                
+        if team_data:
+            selected_node = render_team_graph(team_data)
+            if selected_node:
+                # If a node is clicked, set it as the pending input and rerun to trigger chat
+                if st.session_state.get("last_selected_node") != selected_node:
+                    st.session_state["pending_input"] = f"Tell me about {selected_node} and their projects."
+                    st.session_state["last_selected_node"] = selected_node
+                    st.rerun()
         else:
-            st.info("Team map uninitialized.")
+            st.info("Team map uninitialized. Upload team_config.yaml to populate.")
 
     st.divider()
 
@@ -124,7 +137,7 @@ with main_col:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    with st.container(border=True):
+    with st.container(border=True, height=500):
         st.markdown("### Conversation History Log")
         
         # Render chat history
@@ -137,7 +150,7 @@ with main_col:
                 with st.chat_message(role):
                     st.markdown(text)
                     if source:
-                        st.caption(f"📄 **Source:** `{source}`")
+                        st.caption(f"**Source:** `{source}`")
                     
                     # Add Feedback UI for Assistant messages
                     if role == "assistant":
@@ -154,23 +167,38 @@ with main_col:
                                 if feedback.get("score") in ["👍", "👎"]:
                                     st.toast("Feedback recorded! Thank you.", icon="📝")
 
-    
+    # Handle input from chat box OR from graph click
     user_input = st.chat_input("Ask about legacy code, team structures, or documentation...", key="chat_input")
+    
+    if "pending_input" in st.session_state:
+        user_input = st.session_state.pop("pending_input")
 
     if user_input:
         st.session_state.chat_history.append(("user", user_input))
         
-        # Call the backend. Backend handles the LLM engine automatically.
-        response = api_client.query_backend(user_input, st.session_state["session_id"], st.session_state["jwt_token"], openai_api_key=None)
+        # --- AGENT TELEMETRY FEED UI ---
+        with st.status("Executing LangGraph State Machine...", expanded=True) as status:
+            st.write("[01] Secure connection established.")
+            st.write("[02] Fetching chat history from MongoDB...")
+            time.sleep(0.2) # Tiny pause to let UI render
+            
+            # Call the backend. Backend handles the LLM engine automatically.
+            response = api_client.query_backend(user_input, st.session_state["session_id"], st.session_state["jwt_token"], openai_api_key=None)
+            
+            if isinstance(response, str) and "Error" in response:
+                st.write("[03] ERROR: Backend connection failed.")
+                st.session_state.chat_history.append(("assistant", response, None))
+            else:
+                st.write("[03] Adaptive RAG retrieved context.")
+                st.write("[04] LLM synthesizing final response...")
+                match = re.search(r'\[Source:\s*(.*?)\]', response)
+                source_file = match.group(1) if match else None
+                clean_response = re.sub(r'\[Source:\s*.*?\]', '', response).strip()
+                st.session_state.chat_history.append(("assistant", clean_response, source_file))
+                st.write("[05] Pipeline execution complete.")
+            
+            status.update(label="Execution Complete", state="complete", expanded=False)
         
-        if isinstance(response, str) and "Error" in response:
-            st.session_state.chat_history.append(("assistant", response, None))
-        else:
-            match = re.search(r'\[Source:\s*(.*?)\]', response)
-            source_file = match.group(1) if match else None
-            clean_response = re.sub(r'\[Source:\s*.*?\]', '', response).strip()
-            st.session_state.chat_history.append(("assistant", clean_response, source_file))
-
         st.rerun()
 
 with feed_col:
