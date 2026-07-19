@@ -5,6 +5,7 @@ from utils.theme import get_custom_css
 from streamlit_feedback import streamlit_feedback
 import re
 import time
+import random
 
 api_client = importlib.reload(api_client)
 
@@ -15,9 +16,18 @@ if "show_logout_confirm" not in st.session_state:
     st.session_state.show_logout_confirm = False
 
 # --- Top Header Area ---
-col_title, col_logout = st.columns([9, 1])
+col_title, col_clear, col_logout = st.columns([7, 1.5, 1.5])
 with col_title:
     st.markdown("## LumanGuide Workspace")
+
+with col_clear:
+    if st.button("Clear Chat", use_container_width=True):
+        # Clear UI history
+        st.session_state.chat_history = []
+        # Generate a new session ID to reset backend MongoDB memory
+        st.session_state.session_id = f"{st.session_state.get('login_user', 'user')}_{int(time.time())}"
+        st.rerun()
+
 with col_logout:
     if st.button("Log out", use_container_width=True):
         st.session_state.show_logout_confirm = True
@@ -44,7 +54,6 @@ if "session_id" not in st.session_state or "jwt_token" not in st.session_state:
 with st.sidebar:
     st.markdown("## Navigation")
     
-    # Inner Container 1: Data Ingestion
     with st.container(border=True):
         st.markdown("#### Data Ingestion")
         uploaded_file = st.file_uploader("Upload a PDF or TXT file", type=["pdf", "txt"])
@@ -72,14 +81,12 @@ with st.sidebar:
 
     st.divider()
 
-    # Inner Container 2: Context Controls
     with st.container(border=True):
         st.markdown("#### Context Controls")
         use_latest = st.checkbox("Force query on latest upload", value=False)
 
     st.divider()
 
-    # Inner Container 3: Interactive Team Navigator
     with st.container(border=True):
         st.markdown("#### Team Navigator Map")
         try:
@@ -93,7 +100,6 @@ with st.sidebar:
             
             if members:
                 st.caption("Click a member to query the agent:")
-                # Create a clean grid of buttons for team members
                 cols = st.columns(2)
                 for idx, m in enumerate(members):
                     with cols[idx % 2]:
@@ -105,7 +111,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Inner Container 4: Persisted Docs
     with st.container(border=True):
         st.markdown("#### Document Picker")
         persisted_resp = api_client.get_persisted_docs()
@@ -134,21 +139,41 @@ with main_col:
     with st.container(border=True, height=500):
         st.markdown("### Conversation History Log")
         
-        # Render chat history
         for i, item in enumerate(st.session_state.chat_history):
             if isinstance(item, (list, tuple)) and len(item) >= 2:
                 role = item[0]
                 text = item[1]
-                source = item[2] if len(item) == 3 else None
+                sources = item[2] if len(item) >= 3 else []
+                context_chunks = item[3] if len(item) >= 4 else []
+                
+                # Ensure sources is always a list for the UI
+                if isinstance(sources, str):
+                    sources = [sources]
                 
                 with st.chat_message(role):
                     st.markdown(text)
-                    if source:
-                        st.caption(f"**Source:** `{source}`")
                     
-                    # Add Feedback UI for Assistant messages
+                    # Render Source Citation Badges
+                    if sources:
+                        badges_html = "<div style='margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'>"
+                        for s in sources:
+                            badges_html += f"""
+                            <span style='background-color: #1c1c1c; color: #88c0d0; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; border: 1px solid #333333;'>
+                                📄 {s}
+                            </span>
+                            """
+                        badges_html += "</div>"
+                        st.markdown(badges_html, unsafe_allow_html=True)
+                    
+                    # Retrieved Context Expander
+                    if context_chunks:
+                        with st.expander(f"Inspect retrieved context ({len(context_chunks)} chunks)", expanded=False):
+                            for chunk in context_chunks:
+                                st.markdown(f"**Source:** `{chunk.get('source', 'unknown')}`")
+                                st.info(chunk.get('snippet', 'No snippet available.'))
+                                st.divider()
+
                     if role == "assistant":
-                        # Show interactive feedback only for the LATEST assistant message
                         if i == len(st.session_state.chat_history) - 1:
                             feedback = streamlit_feedback(
                                 feedback_type="thumbs",
@@ -161,7 +186,6 @@ with main_col:
                                 if feedback.get("score") in ["👍", "👎"]:
                                     st.toast("Feedback recorded! Thank you.", icon="📝")
 
-    # Handle input from chat box OR from graph click
     user_input = st.chat_input("Ask about legacy code, team structures, or documentation...", key="chat_input")
     
     if "pending_input" in st.session_state:
@@ -170,26 +194,31 @@ with main_col:
     if user_input:
         st.session_state.chat_history.append(("user", user_input))
         
-        # --- AGENT TELEMETRY FEED UI ---
-        with st.status("Executing LangGraph State Machine...", expanded=True) as status:
-            st.write("[01] Secure connection established.")
-            st.write("[02] Fetching chat history from MongoDB...")
-            time.sleep(0.2) # Tiny pause to let UI render
+        loading_words = ["Synthesizing", "Orchestrating", "Untangling", "Crunching", "Mulling", "Percolating", "Wrangling", "Cogitating"]
+        
+        with st.status(f"{random.choice(loading_words)} query...", expanded=True) as status:
+            st.write("Parsing vector embeddings...")
+            time.sleep(0.3)
+            st.write("Evaluating document relevance...")
             
-            # Call the backend. Backend handles the LLM engine automatically.
             response = api_client.query_backend(user_input, st.session_state["session_id"], st.session_state["jwt_token"], openai_api_key=None)
             
-            if isinstance(response, str) and "Error" in response:
-                st.write("[03] ERROR: Backend connection failed.")
-                st.session_state.chat_history.append(("assistant", response, None))
+            if isinstance(response, dict) and "content" in response:
+                content = response.get("content", "Error: No content returned.")
+                context_chunks = response.get("retrieved_context", [])
+                
+                if "Error" in content:
+                    st.write("Execution failed.")
+                    st.session_state.chat_history.append(("assistant", content, [], []))
+                else:
+                    st.write("Synthesizing final response...")
+                    # Extract ALL sources from the text to render as badges
+                    sources = re.findall(r'\[Source:\s*(.*?)\]', content)
+                    clean_response = re.sub(r'\[Source:\s*.*?\]', '', content).strip()
+                    
+                    st.session_state.chat_history.append(("assistant", clean_response, sources, context_chunks))
             else:
-                st.write("[03] Adaptive RAG retrieved context.")
-                st.write("[04] LLM synthesizing final response...")
-                match = re.search(r'\[Source:\s*(.*?)\]', response)
-                source_file = match.group(1) if match else None
-                clean_response = re.sub(r'\[Source:\s*.*?\]', '', response).strip()
-                st.session_state.chat_history.append(("assistant", clean_response, source_file))
-                st.write("[05] Pipeline execution complete.")
+                st.session_state.chat_history.append(("assistant", "Error: Invalid response from backend.", [], []))
             
             status.update(label="Execution Complete", state="complete", expanded=False)
         

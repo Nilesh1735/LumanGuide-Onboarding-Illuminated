@@ -31,11 +31,9 @@ async def rag_query(req: QueryRequest):
 
     try:
         messages = await asyncio.wait_for(chat_history.get_messages(), timeout=3.0)
-        # FIX: Ensure the current user query is strictly the last message in the list
         if not messages:
             messages = [HumanMessage(content=req.query)]
         else:
-            # Append the current query to guarantee it's the final HumanMessage
             messages.append(HumanMessage(content=req.query))
     except Exception as exc:
         logger.warning("Could not load chat history (falling back to single-message context): %s", exc)
@@ -55,7 +53,7 @@ async def rag_query(req: QueryRequest):
                     asyncio.create_task(chat_history.add_message(AIMessage(content=answer)))
                 except Exception:
                     pass
-                return {"result": {"content": answer, "diagnostics": {"docs_scanned": 0}}}
+                return {"result": {"content": answer, "diagnostics": {"docs_scanned": 0}, "retrieved_context": []}}
 
             chosen = None
             if trigger_use_latest:
@@ -76,7 +74,7 @@ async def rag_query(req: QueryRequest):
                     asyncio.create_task(chat_history.add_message(AIMessage(content=answer)))
                 except Exception:
                     pass
-                return {"result": {"content": answer, "diagnostics": {"docs_scanned": len(persisted_docs)}}}
+                return {"result": {"content": answer, "diagnostics": {"docs_scanned": len(persisted_docs)}, "retrieved_context": []}}
 
             text = chosen.page_content if hasattr(chosen, 'page_content') else str(chosen)
             clean_text = text.replace('\ufeff', '').strip()
@@ -88,7 +86,7 @@ async def rag_query(req: QueryRequest):
                 asyncio.create_task(chat_history.add_message(AIMessage(content=reply)))
             except Exception:
                 pass
-            return {"result": {"content": reply, "diagnostics": diagnostics}}
+            return {"result": {"content": reply, "diagnostics": diagnostics, "retrieved_context": []}}
     except Exception as e:
         logger.exception("Explicit-file fallback failed: %s", e)
 
@@ -134,7 +132,7 @@ async def rag_query(req: QueryRequest):
                     answer = f"The {op_name} value found in documents is: {display_val}"
                     diagnostics = {"docs_scanned": docs_searched, "sample_snippet": sample_snippet}
                     asyncio.create_task(chat_history.add_message(AIMessage(content=answer)))
-                    return {"result": {"content": answer, "diagnostics": diagnostics}}
+                    return {"result": {"content": answer, "diagnostics": diagnostics, "retrieved_context": []}}
             except Exception as e:
                 logger.debug("Numeric fallback failed: %s", e)
     except Exception:
@@ -158,14 +156,14 @@ async def rag_query(req: QueryRequest):
                     diagnostics = {"docs_scanned": len(persisted_docs), "sample_snippet": snippets[0]}
                     try: asyncio.create_task(chat_history.add_message(AIMessage(content=reply)))
                     except: pass
-                    return {"result": {"content": reply, "diagnostics": diagnostics}}
+                    return {"result": {"content": reply, "diagnostics": diagnostics, "retrieved_context": []}}
         except Exception as ret_exc:
             logger.exception("Retrieval-only fallback also failed: %s", ret_exc)
 
         fallback_text = "The RAG pipeline encountered an error while processing your query. This usually means the configured LLM is unavailable."
         try: asyncio.create_task(chat_history.add_message(AIMessage(content=fallback_text)))
         except: pass
-        return {"result": {"content": fallback_text}}
+        return {"result": {"content": fallback_text, "retrieved_context": []}}
 
     output_message = result["messages"][-1]
     output_text = output_message.content
@@ -175,7 +173,21 @@ async def rag_query(req: QueryRequest):
     except Exception as exc:
         logger.warning("Failed to schedule assistant message write: %s", exc)
 
-    return {"result": output_message}
+    # FIX: Fetch retrieved context to send to the UI for transparency
+    retrieved_context = []
+    try:
+        retriever = get_retriever()
+        if retriever:
+            docs = retriever.invoke(req.query)
+            for d in docs[:3]: # Get top 3 chunks
+                text = d.page_content if hasattr(d, 'page_content') else str(d)
+                source = d.metadata.get('source', 'unknown') if hasattr(d, 'metadata') else 'unknown'
+                retrieved_context.append({"source": source, "snippet": text[:250]})
+    except Exception as e:
+        logger.error(f"Could not fetch context for UI: {e}")
+
+    # Return clean dictionary with answer AND context
+    return {"result": {"content": output_text, "retrieved_context": retrieved_context}}
 
 @router.get("/rag/persisted_docs")
 def list_persisted_docs():
