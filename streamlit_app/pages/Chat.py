@@ -32,7 +32,8 @@ with col_logout:
 
 if st.session_state.show_logout_confirm:
     with st.container(border=True):
-        st.warning("Are you sure you want to log out?")
+        # Use custom HTML for the warning box to apply the Emerald theme
+        st.markdown('<div class="logout-confirm-box">Are you sure you want to log out?</div>', unsafe_allow_html=True)
         col_confirm, col_cancel = st.columns(2)
         with col_confirm:
             if st.button("Yes, log out", type="primary", use_container_width=True):
@@ -172,12 +173,12 @@ with main_col:
                     with st.chat_message(role):
                         st.markdown(text)
                         
-                        # Render Source Citation Badges (No emojis, clean minimalistic look)
+                        # Render Source Citation Badges (Emerald color)
                         if sources:
                             badges_html = "<div style='margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'>"
                             for s in sources:
                                 badges_html += f"""
-                                <span style='background-color: #1c1c1c; color: #88c0d0; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; border: 1px solid #333333;'>
+                                <span style='background-color: #1c1c1c; color: #10b981; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; border: 1px solid #333333;'>
                                     {s}
                                 </span>
                                 """
@@ -213,7 +214,6 @@ with main_col:
     if user_input:
         st.session_state.chat_history.append(("user", user_input))
         
-        # The full list of Cerebral, Culinary, Systems, and Playful words!
         loading_words = [
             "Pondering", "Mulling", "Contemplating", "Cogitating", "Deliberating", "Ruminating", "Musing", "Considering",
             "Brewing", "Marinating", "Percolating", "Simmering", "Stewing", "Baking", "Cooking",
@@ -224,7 +224,6 @@ with main_col:
         with st.status("Initializing query...", expanded=True) as status:
             st.write("Parsing vector embeddings...")
             
-            # Run the API request in a background thread so the UI can rotate!
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(
                     api_client.query_backend, 
@@ -235,14 +234,12 @@ with main_col:
                 )
                 
                 idx = 0
-                # Rotate the words while the backend is thinking
                 while not future.done():
                     word = loading_words[idx % len(loading_words)]
                     status.update(label=f"{word} query...")
                     time.sleep(0.8)
                     idx += 1
                 
-                # Get the result once the thread finishes
                 response = future.result()
             
             if isinstance(response, dict) and "content" in response:

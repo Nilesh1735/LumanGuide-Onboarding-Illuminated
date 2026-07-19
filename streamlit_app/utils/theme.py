@@ -1,6 +1,6 @@
 """
 Shared theming for the LumanGuide Streamlit app.
-Design System: 'GitHub Midnight' (Strict Dark, High Contrast, Purple Accents).
+Design System: 'GitHub Midnight' (Strict Dark, High Contrast, Emerald Accents).
 Typography: Space Grotesk (UI) & Space Mono (Code/Terminal).
 """
 
@@ -21,9 +21,9 @@ def get_custom_css(page: str = "home") -> str:
     --font-main: 'Space Grotesk', sans-serif;
     --font-mono: 'Space Mono', monospace;
     
-    --accent-purple: #a855f7;    /* Vibrant Purple */
+    --accent-emerald: #10b981;   /* Deep Secure Emerald */
     --accent-blue: #58a6ff;      /* GitHub Blue */
-    --accent-green: #3fb950;     /* GitHub Green */
+    --accent-green: #3fb950;     /* Status Green */
     --border-color: #30363d;     /* Slate Grey */
     --radius-lg: 16px;
     --radius-md: 8px;
@@ -49,14 +49,8 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em !important;
 }
 
-p, span, li, div {
-    color: var(--text-primary) !important;
-}
-
-a {
-    color: var(--accent-blue) !important; 
-    text-decoration: none !important;
-}
+p, span, li, div { color: var(--text-primary) !important; }
+a { color: var(--accent-blue) !important; text-decoration: none !important; }
 
 /* 3. Sidebar & Cards */
 [data-testid="stSidebar"] {
@@ -85,8 +79,8 @@ a {
 }
 
 .stTextInput input:focus, .stTextArea textarea:focus {
-    border-color: var(--accent-purple) !important;
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15) !important;
+    border-color: var(--accent-emerald) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
 }
 
 .stTextInput > label, .stTextArea > label {
@@ -110,20 +104,20 @@ a {
 }
 
 .stButton button:hover {
-    border-color: var(--accent-purple) !important;
-    color: var(--accent-purple) !important;
+    border-color: var(--accent-emerald) !important;
+    color: var(--accent-emerald) !important;
     background-color: #30363d !important;
 }
 
 button[kind="primary"] {
-    background-color: var(--accent-purple) !important;
+    background-color: var(--accent-emerald) !important;
     color: #ffffff !important;
     border: none !important;
 }
 
 button[kind="primary"]:hover {
-    background-color: #9333ea !important; 
-    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3) !important;
+    background-color: #059669 !important; 
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
 }
 
 /* 6. Chat Messages */
@@ -136,7 +130,7 @@ button[kind="primary"]:hover {
 }
 
 [data-testid="stChatMessage"][data-testid*="user"] {
-    border-left: 4px solid var(--accent-purple) !important;
+    border-left: 4px solid var(--accent-emerald) !important;
 }
 
 [data-testid="stChatMessage"]:not([data-testid*="user"]) {
@@ -187,7 +181,7 @@ button[kind="primary"]:hover {
     border: 1px dashed var(--border-color) !important;
     border-radius: var(--radius-md) !important;
 }
-[data-testid="stFileUploaderDropzone"]:hover { border-color: var(--accent-purple) !important; }
+[data-testid="stFileUploaderDropzone"]:hover { border-color: var(--accent-emerald) !important; }
 [data-testid="stFileUploaderDropzoneInstructions"] {
     color: var(--text-secondary) !important;
     font-family: var(--font-main) !important;
@@ -199,16 +193,13 @@ button[kind="primary"]:hover {
     border: 1px solid var(--border-color) !important;
     background-color: var(--bg-input) !important;
 }
-pre code {
-    font-family: var(--font-mono) !important; 
-    font-size: 0.9em !important;
-}
+pre code { font-family: var(--font-mono) !important; font-size: 0.9em !important; }
 
 /* 9. Scrollbar */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--accent-purple); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-emerald); }
 
 /* 10. Feedback UI */
 div[data-testid="stFeedback"] { background-color: transparent !important; margin-top: 10px; }
@@ -220,24 +211,19 @@ div[data-testid="stFeedback"] button {
     transition: all 0.2s ease !important;
 }
 div[data-testid="stFeedback"] button:hover {
-    border-color: #a855f7 !important;
-    color: #a855f7 !important;
+    border-color: #10b981 !important;
+    color: #10b981 !important;
 }
 div[data-testid="stFeedback"] button svg { fill: #f0f6fc !important; }
 div[data-testid="stFeedback"] button[aria-pressed="true"] {
-    background-color: #a855f7 !important;
-    border-color: #a855f7 !important;
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
     color: #ffffff !important;
 }
 div[data-testid="stFeedback"] button[aria-pressed="true"] svg { fill: #ffffff !important; }
 
 /* --- SPLIT SCREEN & LANDING PAGE CUSTOM CSS --- */
-.landing-grid {
-    display: flex;
-    height: 85vh;
-    gap: 2rem;
-    margin-top: 2rem;
-}
+.landing-grid { display: flex; height: 85vh; gap: 2rem; margin-top: 2rem; }
 .left-panel {
     flex: 1.2;
     background-color: var(--bg-card);
@@ -248,12 +234,7 @@ div[data-testid="stFeedback"] button[aria-pressed="true"] svg { fill: #ffffff !i
     flex-direction: column;
     justify-content: center;
 }
-.right-panel {
-    flex: 0.8;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
+.right-panel { flex: 0.8; display: flex; flex-direction: column; justify-content: center; }
 .brand-title {
     font-family: var(--font-main) !important;
     font-size: 3.5rem !important;
@@ -263,16 +244,11 @@ div[data-testid="stFeedback"] button[aria-pressed="true"] svg { fill: #ffffff !i
 }
 .brand-subtitle {
     font-family: var(--font-mono) !important;
-    color: var(--accent-purple) !important;
+    color: var(--accent-emerald) !important;
     font-size: 1.2rem !important;
     margin-bottom: 3rem !important;
 }
-.capabilities {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 3rem;
-}
+.capabilities { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 3rem; }
 .cap-item {
     font-family: var(--font-main) !important;
     color: var(--text-primary) !important;
@@ -302,19 +278,9 @@ div[data-testid="stFeedback"] button[aria-pressed="true"] svg { fill: #ffffff !i
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
 }
-.terminal-line {
-    color: var(--text-primary) !important;
-    font-size: 0.9rem !important;
-    margin-bottom: 0.5rem;
-}
+.terminal-line { color: var(--text-primary) !important; font-size: 0.9rem !important; margin-bottom: 0.5rem; }
 .ok-text { color: var(--accent-green) !important; }
-.tech-pills {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 2rem;
-    flex-wrap: wrap;
-}
+.tech-pills { display: flex; gap: 12px; justify-content: center; margin-top: 2rem; flex-wrap: wrap; }
 .tech-pill {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -329,6 +295,18 @@ div[data-testid="stFeedback"] button[aria-pressed="true"] svg { fill: #ffffff !i
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 2.5rem;
+}
+
+/* --- LOGOUT CONFIRMATION BOX --- */
+.logout-confirm-box {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    border: 1px solid var(--accent-emerald) !important;
+    color: var(--accent-emerald) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 15px !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 500 !important;
+    margin-bottom: 10px !important;
 }
 </style>
 """

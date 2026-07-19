@@ -78,7 +78,6 @@ if st.session_state.get("api_initialized"):
                 
         # RIGHT COLUMN: Auth Box
         with right_col:
-            # Use native Streamlit container with border for the auth box
             with st.container(border=True):
                 tab1, tab2 = st.tabs(["Log in", "Sign up"])
 
@@ -123,7 +122,6 @@ if st.session_state.get("api_initialized"):
                         else:
                             st.warning("Please fill out all fields.")
                             
-            # Tech Stack Pills
             st.markdown("""
             <div class="tech-pills">
                 <span class="tech-pill">Secured by JWT</span>
@@ -134,25 +132,45 @@ if st.session_state.get("api_initialized"):
             """, unsafe_allow_html=True)
 
     else:
-        # --- LOGGED IN VIEW ---
-        st.markdown("## LumanGuide Dashboard")
-        with st.container(border=True):
-            st.success(f"Successfully authenticated as **{st.session_state.get('session_id', 'User')}**")
-            st.write("") # Margin spacing
+        # --- PREMIUM LOGGED IN DASHBOARD ---
+        col_title, col_logout = st.columns([8, 2])
+        with col_title:
+            st.markdown("## LumanGuide Dashboard")
+            # Custom HTML for clean user display with Emerald accent
+            st.markdown(f"""
+            <p style='color:#8b949e; margin-top:-10px; font-family: var(--font-mono); font-size: 0.9rem;'>
+                Authenticated as <span style='color: #10b981; font-weight: 700;'>{st.session_state.get('session_id', 'User')}</span>
+            </p>
+            """, unsafe_allow_html=True)
             
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button("Go to Chat Workspace", use_container_width=True, type="primary"):
+        with col_logout:
+            st.write("") # Spacer
+            if st.button("Log out", use_container_width=True):
+                del st.session_state["jwt_token"]
+                st.session_state.pop("session_id", None)
+                st.rerun()
+
+        st.write("")
+        
+        # Dashboard Launchpad Cards
+        col_chat, col_docs = st.columns(2)
+        
+        with col_chat:
+            with st.container(border=True):
+                st.markdown("#### Chat Workspace")
+                st.caption("Interact with the Adaptive RAG state machine. Query documents, navigate team structures, and synthesize data.")
+                st.write("")
+                if st.button("Launch Chat", use_container_width=True, type="primary"):
                     st.switch_page("pages/Chat.py")
-            with col2:
+        
+        with col_docs:
+            with st.container(border=True):
+                st.markdown("#### Data Ingestion")
+                st.caption("Upload new engineering runbooks, PDFs, or team configurations to expand the vector knowledge base.")
+                st.write("")
                 if st.button("Manage Documents", use_container_width=True):
                     st.switch_page("pages/Chat.py")
-            with col3:
-                if st.button("Log out session", use_container_width=True):
-                    del st.session_state["jwt_token"]
-                    st.session_state.pop("session_id", None)
-                    st.success("Logged out successfully.")
-                    st.rerun()
+
 else:
     with st.container(border=True):
         st.warning("Application features are currently offline due to a backend connection timeout.")
