@@ -181,7 +181,6 @@ except Exception as exc:
 def render_team_graph(
     team: List[Dict[str, Any]],
     config: Any = None,
-    key: str = "team_graph",
 ) -> Optional[str]:
     """Render the interactive team graph and return the selected node name."""
     import streamlit as st
@@ -208,11 +207,11 @@ def render_team_graph(
         )
         return None
 
+    # FIX: Removed key=key to prevent TypeError on Streamlit Cloud
     selected_node = agraph(
         nodes=nodes,
         edges=edges,
         config=resolved_config,
-        key=key,
     )
 
     selected_name: Optional[str] = None
