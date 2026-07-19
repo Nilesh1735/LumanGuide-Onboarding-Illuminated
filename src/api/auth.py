@@ -3,32 +3,11 @@ from pydantic import BaseModel
 import bcrypt
 import os
 import jwt
-import sqlite3
 import logging
+from src.db.mongo_client import db  # Import the db instance directly
 
 auth_router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Use a local SQLite database for users
-DB_PATH = os.getenv("SQLITE_DB_PATH", "users.db")
-
-def init_db():
-    """Create the users table if it doesn't exist."""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            email TEXT UNIQUE,
-            hashed_password TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# Initialize the database on startup
-init_db()
 
 class UserSignup(BaseModel):
     username: str
@@ -40,58 +19,48 @@ class UserLogin(BaseModel):
     password: str
 
 @auth_router.post("/auth/signup")
-def signup(user: UserSignup):
-    """Create a new user account in the SQLite database."""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+async def signup(user: UserSignup):
+    """Create a new user account in MongoDB."""
+    users_col = db.users
     
     # Check if username or email already exists
-    cursor.execute("SELECT * FROM users WHERE username = ? OR email = ?", (user.username, user.email))
-    if cursor.fetchone():
-        conn.close()
+    existing_user = await users_col.find_one({"$or": [{"username": user.username}, {"email": user.email}]})
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username or email already registered")
         
     # Hash the password using bcrypt
     hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
     hashed_password_str = hashed_password.decode('utf-8')
     
-    # Save to database
+    # Save to MongoDB
     try:
-        cursor.execute(
-            "INSERT INTO users (username, email, hashed_password) VALUES (?, ?, ?)",
-            (user.username, user.email, hashed_password_str)
-        )
-        conn.commit()
-        user_id = cursor.lastrowid
-        conn.close()
-        return {"ok": True, "message": "User created successfully", "user_id": str(user_id)}
+        result = await users_col.insert_one({
+            "username": user.username,
+            "email": user.email,
+            "hashed_password": hashed_password_str
+        })
+        return {"ok": True, "message": "User created successfully", "user_id": str(result.inserted_id)}
     except Exception as e:
-        conn.close()
         logger.error(f"Signup failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to create user account.")
 
 @auth_router.post("/auth/login")
-def login(user: UserLogin):
-    """Verify credentials against the database and issue a real JWT."""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+async def login(user: UserLogin):
+    """Verify credentials against MongoDB and issue a real JWT."""
+    users_col = db.users
     
     # Look for the user by username OR email
-    cursor.execute("SELECT id, hashed_password FROM users WHERE username = ? OR email = ?", (user.login_id, user.login_id))
-    row = cursor.fetchone()
-    conn.close()
+    db_user = await users_col.find_one({"$or": [{"username": user.login_id}, {"email": user.login_id}]})
 
-    if not row:
+    if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials. Access denied.")
     
-    user_id, hashed_password_str = row
-    
-    # Verify the provided password against the stored hash
-    if not bcrypt.checkpw(user.password.encode('utf-8'), hashed_password_str.encode('utf-8')):
+    hashed_password_str = db_user.get('hashed_password')
+    if not hashed_password_str or not bcrypt.checkpw(user.password.encode('utf-8'), hashed_password_str.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid credentials. Access denied.")
         
     # GENERATE REAL JWT TOKEN
     secret = os.getenv("JWT_SECRET", "supersecretjwt12345")
-    token = jwt.encode({"sub": str(user_id)}, secret, algorithm="HS256")
+    token = jwt.encode({"sub": str(db_user['_id'])}, secret, algorithm="HS256")
     
-    return {"ok": True, "token": token, "user_id": str(user_id)}
+    return {"ok": True, "token": token, "user_id": str(db_user['_id'])}
