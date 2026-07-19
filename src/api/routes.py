@@ -31,9 +31,12 @@ async def rag_query(req: QueryRequest):
 
     try:
         messages = await asyncio.wait_for(chat_history.get_messages(), timeout=3.0)
-        # FIX: If chat history is empty (e.g. first message), inject the current query
+        # FIX: Ensure the current user query is strictly the last message in the list
         if not messages:
             messages = [HumanMessage(content=req.query)]
+        else:
+            # Append the current query to guarantee it's the final HumanMessage
+            messages.append(HumanMessage(content=req.query))
     except Exception as exc:
         logger.warning("Could not load chat history (falling back to single-message context): %s", exc)
         messages = [HumanMessage(content=req.query)]
