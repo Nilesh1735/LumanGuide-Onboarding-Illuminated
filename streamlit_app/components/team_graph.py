@@ -4,18 +4,6 @@ Interactive 3D team graph component for the Contextual Team Navigator.
 Renders the SMEs and their projects as an interactive graph using
 ``streamlit_agraph``. Team members are colour-coded by role, and each
 member is connected by an edge to the projects they own or contribute to.
-
-The component exposes two Streamlit-facing entry points:
-
-  * ``render_team_graph(team: list)`` - renders the graph and returns the
-    name of the selected node (or ``None`` if nothing is selected).
-  * ``TEAM_GRAPH_CONFIG`` - the default ``Config`` instance, exposed so the
-    hosting page can tweak rendering (e.g. switch between 2D/3D) if needed.
-
-Node selection is surfaced through ``streamlit_agraph``'s
-``Config(large_graph_node_search)`` and the component's own session-state
-bridge so that the selected name can be fed directly into the chat input
-box on the parent page.
 """
 
 from __future__ import annotations
@@ -29,9 +17,6 @@ logger = logging.getLogger(__name__)
 # Role colour mapping
 # ---------------------------------------------------------------------------
 
-# Colour palette keyed by normalised role. Roles are matched by keyword so
-# the mapping stays resilient to title variations ("Senior Backend Engineer",
-# "Backend Engineer", "Staff Backend" all resolve to the same colour).
 ROLE_COLOURS: Dict[str, str] = {
     "backend": "#4C9AFF",     # blue
     "frontend": "#FF8B73",    # coral
@@ -59,29 +44,12 @@ _SESSION_STATE_KEY = "team_graph_selected_node"
 
 
 def _normalise_role(role: str) -> str:
-    """Lower-case and trim a role title for colour lookup.
-
-    Args:
-        role: The raw role string from the team config.
-
-    Returns:
-        A lower-case, stripped role string.
-    """
+    """Lower-case and trim a role title for colour lookup."""
     return (role or "").strip().lower()
 
 
 def _colour_for_role(role: str) -> str:
-    """Resolve the display colour for a member role.
-
-    Matching is keyword-based: the first role keyword that appears in the
-    title wins. This keeps colouring stable across title granularity.
-
-    Args:
-        role: The raw role string from the team config.
-
-    Returns:
-        A hex colour string.
-    """
+    """Resolve the display colour for a member role."""
     normalised = _normalise_role(role)
     for keyword, colour in ROLE_COLOURS.items():
         if keyword in normalised:
@@ -90,27 +58,12 @@ def _colour_for_role(role: str) -> str:
 
 
 def _node_id(prefix: str, name: str) -> str:
-    """Build a deterministic, unique node identifier.
-
-    Args:
-        prefix: Either ``"member"`` or ``"project"``.
-        name: The member or project display name.
-
-    Returns:
-        A stable node id of the form ``prefix::name``.
-    """
+    """Build a deterministic, unique node identifier."""
     return f"{prefix}::{name}"
 
 
 def _from_node_id(node_id: str) -> Dict[str, str]:
-    """Decode a node identifier back into its kind and display name.
-
-    Args:
-        node_id: The identifier produced by ``_node_id``.
-
-    Returns:
-        A dictionary with ``kind`` ("member" or "project") and ``name`` keys.
-    """
+    """Decode a node identifier back into its kind and display name."""
     if "::" not in node_id:
         return {"kind": "unknown", "name": node_id}
     kind, name = node_id.split("::", 1)
@@ -123,25 +76,10 @@ def _from_node_id(node_id: str) -> Dict[str, str]:
 
 
 def build_graph_elements(team: List[Dict[str, Any]]):
-    """Translate a team config list into agraph nodes and edges.
-
-    Each member becomes one node and each project becomes one node. An edge
-    is created for every project a member owns or contributes to. Member
-    nodes carry role-derived colour and the member's slack handle as a
-    tooltip; project nodes use a neutral colour and show the member's role
-    on the project as the edge label.
-
-    Args:
-        team: The parsed ``team`` list from ``team_config.yaml``. Each entry
-            must contain at least ``name`` and ``role``; ``projects`` is an
-            optional list of ``{name, role, repo}`` dicts.
-
-    Returns:
-        A tuple ``(nodes, edges)`` suitable for ``agraph`` consumption.
-    """
+    """Translate a team config list into agraph nodes and edges."""
     try:
         from streamlit_agraph import Edge, Node
-    except Exception as exc:  # noqa: BLE001 - optional dependency
+    except Exception as exc:
         raise RuntimeError(
             "streamlit_agraph is not installed. Install with "
             "`pip install streamlit-agraph`."
@@ -156,7 +94,8 @@ def build_graph_elements(team: List[Dict[str, Any]]):
         if node_id in seen_nodes:
             return
         seen_nodes.add(node_id)
-        nodes.append(Node(id=node_id, label=kwargs.get("label", node_id), **kwargs))
+        # FIX: Pass kwargs directly, avoiding duplicate 'label' argument
+        nodes.append(Node(id=node_id, **kwargs))
 
     def _add_edge(source: str, target: str, label: str = "") -> None:
         key = (source, target, label)
@@ -208,11 +147,7 @@ def build_graph_elements(team: List[Dict[str, Any]]):
 
 
 def _default_config():
-    """Return the default agraph ``Config`` with 3D rendering enabled.
-
-    Returns:
-        A configured ``streamlit_agraph.Config`` instance.
-    """
+    """Return the default agraph ``Config`` with 3D rendering enabled."""
     from streamlit_agraph.config import Config
 
     return Config(
@@ -226,7 +161,6 @@ def _default_config():
         collapsible=False,
         node={"labelProperty": "label", "renderLabel": True},
         link={"labelProperty": "label", "renderLabel": False},
-        # 3D viewport is what makes this an interactive 3D graph.
         layout={"improvedLayout": True},
     )
 
@@ -234,7 +168,7 @@ def _default_config():
 # Expose a module-level default config so callers can reuse or override it.
 try:
     TEAM_GRAPH_CONFIG = _default_config()
-except Exception as exc:  # noqa: BLE001 - optional dependency
+except Exception as exc:
     logger.debug("Default team graph config not built: %s", exc)
     TEAM_GRAPH_CONFIG = None
 
@@ -249,22 +183,7 @@ def render_team_graph(
     config: Any = None,
     key: str = "team_graph",
 ) -> Optional[str]:
-    """Render the interactive team graph and return the selected node name.
-
-    The selected node name is persisted in Streamlit session state under
-    ``team_graph_selected_node`` so the parent page can read it after a
-    re-run and feed it into the chat input.
-
-    Args:
-        team: The parsed ``team`` list from ``team_config.yaml``.
-        config: Optional ``streamlit_agraph.Config`` override. When omitted
-            the module-level 3D default is used.
-        key: Streamlit widget key used to disambiguate the agraph instance.
-
-    Returns:
-        The display name of the selected node (member or project), or
-        ``None`` if nothing is selected in this run.
-    """
+    """Render the interactive team graph and return the selected node name."""
     import streamlit as st
     from streamlit_agraph import agraph
 
@@ -302,8 +221,6 @@ def render_team_graph(
         selected_name = decoded.get("name")
         st.session_state[_SESSION_STATE_KEY] = selected_name
     else:
-        # Keep a previously selected value available across re-runs without
-        # forcing re-selection on every interaction.
         selected_name = st.session_state.get(_SESSION_STATE_KEY)
 
     if selected_name:
@@ -313,21 +230,14 @@ def render_team_graph(
 
 
 def get_selected_node() -> Optional[str]:
-    """Return the currently selected team graph node name, if any.
-
-    Returns:
-        The selected node's display name stored in session state, or
-        ``None``.
-    """
+    """Return the currently selected team graph node name, if any."""
     import streamlit as st
-
     return st.session_state.get(_SESSION_STATE_KEY)
 
 
 def clear_selected_node() -> None:
     """Clear the persisted selection from session state."""
     import streamlit as st
-
     st.session_state.pop(_SESSION_STATE_KEY, None)
 
 
