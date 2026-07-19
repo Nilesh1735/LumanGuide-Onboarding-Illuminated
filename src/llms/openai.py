@@ -12,9 +12,9 @@ def get_master_llm():
     if not gemini_key:
         raise ValueError("GOOGLE_API_KEY is not configured in the environment.")
     
-    logger.info("Initializing Google Gemini LLM (gemini-1.5-flash-latest).")
+    logger.info("Initializing Google Gemini LLM (gemini-1.5-flash-002).")
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-latest",  # <--- CHANGED THIS
+        model="gemini-1.5-flash-002",  # <--- CHANGED TO PINNED STABLE VERSION
         google_api_key=gemini_key, 
         temperature=0.7,
         max_retries=0
