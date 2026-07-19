@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Header, Request
+from fastapi import APIRouter, HTTPException, UploadFile, File, Header
 from langchain_core.messages import HumanMessage, AIMessage
 import asyncio
 import logging
@@ -22,8 +22,6 @@ async def rag_query(req: QueryRequest):
     """
     Process a RAG query through the State-Driven Adaptive RAG pipeline.
     """
-    # The frontend no longer sends an API key. The backend uses its default LLM router.
-    
     chat_history = ChatHistory.get_session_history(req.session_id)
 
     try:
@@ -33,6 +31,9 @@ async def rag_query(req: QueryRequest):
 
     try:
         messages = await asyncio.wait_for(chat_history.get_messages(), timeout=3.0)
+        # FIX: If chat history is empty (e.g. first message), inject the current query
+        if not messages:
+            messages = [HumanMessage(content=req.query)]
     except Exception as exc:
         logger.warning("Could not load chat history (falling back to single-message context): %s", exc)
         messages = [HumanMessage(content=req.query)]
@@ -142,7 +143,6 @@ async def rag_query(req: QueryRequest):
             "messages": messages,
             "latest_query": req.query,
             "consecutive_errors": 0
-            
         })
     except Exception as exc:
         logger.error("Graph invocation failed: %s", exc)
@@ -174,7 +174,6 @@ async def rag_query(req: QueryRequest):
 
     return {"result": output_message}
 
-
 @router.get("/rag/persisted_docs")
 def list_persisted_docs():
     """Return a list of persisted documents with short snippets and metadata for the UI document picker."""
@@ -191,7 +190,6 @@ def list_persisted_docs():
         logger.exception("Failed to list persisted docs: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
-
 @router.post("/rag/documents/upload")
 async def upload_file(
     file: UploadFile = File(...),
@@ -205,7 +203,6 @@ async def upload_file(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Document upload failed: {exc}") from exc
     return {"status": status_upload}
-
 
 @router.post("/rag/team/upload")
 async def upload_team_config_endpoint(file: UploadFile = File(...)):
@@ -243,7 +240,6 @@ async def upload_team_config_endpoint(file: UploadFile = File(...)):
         if tmp_path and os.path.exists(tmp_path):
             try: os.unlink(tmp_path)
             except: pass
-
 
 @router.get("/rag/team/status")
 def team_status():
