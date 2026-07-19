@@ -18,7 +18,6 @@ uvicorn
 motor
 pymongo
 streamlit
-streamlit-agraph
 streamlit-feedback
 langchain-qdrant
 python-multipart

@@ -3,10 +3,7 @@ import streamlit as st
 import utils.api_client as api_client
 from utils.theme import get_custom_css
 from streamlit_feedback import streamlit_feedback
-from components.team_graph import render_team_graph
 import re
-import os
-import yaml
 import time
 
 api_client = importlib.reload(api_client)
@@ -82,32 +79,29 @@ with st.sidebar:
 
     st.divider()
 
-    # Inner Container 3: Interactive Team Navigator Graph
+    # Inner Container 3: Interactive Team Navigator
     with st.container(border=True):
         st.markdown("#### Team Navigator Map")
-        
-        # Load team_config.yaml to populate the graph
-        team_data = []
-        config_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "team_config.yaml")
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, "r") as f:
-                    yaml_data = yaml.safe_load(f)
-                    if yaml_data and "team" in yaml_data:
-                        team_data = yaml_data["team"]
-            except Exception:
-                pass
-                
-        if team_data:
-            selected_node = render_team_graph(team_data)
-            if selected_node:
-                # If a node is clicked, set it as the pending input and rerun to trigger chat
-                if st.session_state.get("last_selected_node") != selected_node:
-                    st.session_state["pending_input"] = f"Tell me about {selected_node} and their projects."
-                    st.session_state["last_selected_node"] = selected_node
-                    st.rerun()
+        try:
+            nav_status = api_client.get_team_status()
+        except Exception:
+            nav_status = None
+
+        if isinstance(nav_status, dict) and nav_status.get("navigator_loaded"):
+            st.success(f"Team data active: {nav_status.get('member_count', 0)} SME(s)")
+            members = nav_status.get("members", [])
+            
+            if members:
+                st.caption("Click a member to query the agent:")
+                # Create a clean grid of buttons for team members
+                cols = st.columns(2)
+                for idx, m in enumerate(members):
+                    with cols[idx % 2]:
+                        if st.button(m, key=f"team_btn_{m}", use_container_width=True):
+                            st.session_state["pending_input"] = f"Tell me about {m} and their projects."
+                            st.rerun()
         else:
-            st.info("Team map uninitialized. Upload team_config.yaml to populate.")
+            st.info("Team map uninitialized.")
 
     st.divider()
 
