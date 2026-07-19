@@ -1,13 +1,13 @@
 """
 Shared theming for the LumanGuide Streamlit app.
 Design System: 'GitHub Midnight' (Strict Dark, High Contrast, Purple Accents).
-Typography: Inter (UI) & JetBrains Mono (Code/Headers).
+Typography: Space Grotesk (UI) & Space Mono (Code/Terminal).
 """
 
 def get_custom_css(page: str = "home") -> str:
     return """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 :root {
     --bg-main: #0d1117;          /* Deep GitHub Black */
@@ -18,11 +18,12 @@ def get_custom_css(page: str = "home") -> str:
     --text-secondary: #8b949e;   /* GitHub Secondary Grey */
     
     /* Font System */
-    --font-main: 'Inter', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-main: 'Space Grotesk', sans-serif;
+    --font-mono: 'Space Mono', monospace;
     
     --accent-purple: #a855f7;    /* Vibrant Purple */
     --accent-blue: #58a6ff;      /* GitHub Blue */
+    --accent-green: #3fb950;     /* GitHub Green */
     --border-color: #30363d;     /* Slate Grey */
     --radius-lg: 16px;
     --radius-md: 8px;
@@ -30,20 +31,19 @@ def get_custom_css(page: str = "home") -> str:
 
 /* 1. Global Canvas & Typography */
 html, body, [class*="css"], .stApp {
-    font-family: var(--font-main) !important; /* Inter for all standard UI text */
+    font-family: var(--font-main) !important; 
     background-color: var(--bg-main) !important;
     color: var(--text-primary) !important;
 }
 
-/* Hide ONLY the Streamlit Logo, KEEP sidebar toggle & deploy button */
 #MainMenu { display: none !important; }
 footer { display: none !important; }
 [data-testid="stLogo"], [data-testid="stLogoSmall"] { display: none !important; }
 header[data-testid="stHeader"] { background: transparent !important; }
 
-/* 2. Typography Hierarchy (JetBrains Mono for Headers) */
+/* 2. Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-mono) !important; /* JetBrains Mono for technical headings */
+    font-family: var(--font-main) !important; 
     color: var(--text-primary) !important;
     font-weight: 600 !important;
     letter-spacing: -0.02em !important;
@@ -54,11 +54,11 @@ p, span, li, div {
 }
 
 a {
-    color: var(--accent-blue) !important; /* GitHub Blue Links */
+    color: var(--accent-blue) !important; 
     text-decoration: none !important;
 }
 
-/* 3. Sidebar & Cards (Strict #161b22 Backgrounds) */
+/* 3. Sidebar & Cards */
 [data-testid="stSidebar"] {
     background-color: var(--bg-card) !important;
     border-right: 1px solid var(--border-color) !important;
@@ -73,7 +73,7 @@ a {
     margin-bottom: 1.5rem !important;
 }
 
-/* 4. Form Inputs (No White Boxes) */
+/* 4. Form Inputs */
 .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
     border-radius: var(--radius-md) !important;
     border: 1px solid var(--border-color) !important;
@@ -91,13 +91,13 @@ a {
 
 .stTextInput > label, .stTextArea > label {
     color: var(--text-secondary) !important;
-    font-family: var(--font-mono) !important; /* Mono for labels */
+    font-family: var(--font-mono) !important; 
     font-size: 0.85rem !important;
     font-weight: 500 !important;
     margin-bottom: 8px;
 }
 
-/* 5. Buttons (High Contrast) */
+/* 5. Buttons */
 .stButton button {
     background-color: #21262d !important; 
     color: var(--text-primary) !important;
@@ -126,7 +126,7 @@ button[kind="primary"]:hover {
     box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3) !important;
 }
 
-/* 6. Chat Messages (Rounded 16px, clear borders) */
+/* 6. Chat Messages */
 [data-testid="stChatMessage"] {
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border-color) !important;
@@ -149,9 +149,7 @@ button[kind="primary"]:hover {
     line-height: 1.5;
 }
 
-/* 7. CRITICAL FIX: Eliminate All White Boxes */
-
-/* Fix Chat Input Box */
+/* 7. Eliminate White Boxes */
 [data-testid="stChatInput"] {
     border: 1px solid var(--border-color) !important;
     border-radius: var(--radius-lg) !important;
@@ -166,18 +164,14 @@ button[kind="primary"]:hover {
     font-family: var(--font-main) !important;
 }
 
-/* Fix Alerts (Success/Error/Warning boxes) */
 [data-testid="stAlert"] {
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border-color) !important;
     border-radius: var(--radius-md) !important;
     color: var(--text-primary) !important;
 }
-[data-testid="stAlert"] * {
-    color: var(--text-primary) !important;
-}
+[data-testid="stAlert"] * { color: var(--text-primary) !important; }
 
-/* Fix Expanders */
 [data-testid="stExpander"] {
     background-color: var(--bg-input) !important;
     border: 1px solid var(--border-color) !important;
@@ -188,30 +182,26 @@ button[kind="primary"]:hover {
     font-family: var(--font-mono) !important;
 }
 
-/* Fix File Uploader Box */
 [data-testid="stFileUploaderDropzone"] {
     background-color: var(--bg-input) !important;
     border: 1px dashed var(--border-color) !important;
     border-radius: var(--radius-md) !important;
 }
-[data-testid="stFileUploaderDropzone"]:hover {
-    border-color: var(--accent-purple) !important;
-}
+[data-testid="stFileUploaderDropzone"]:hover { border-color: var(--accent-purple) !important; }
 [data-testid="stFileUploaderDropzoneInstructions"] {
     color: var(--text-secondary) !important;
     font-family: var(--font-main) !important;
 }
 
-/* 8. Code Blocks & Telemetry (Strict JetBrains Mono) */
+/* 8. Code Blocks & Terminal */
 [data-testid="stCodeBlock"] {
     border-radius: var(--radius-md) !important;
     border: 1px solid var(--border-color) !important;
     background-color: var(--bg-input) !important;
 }
 pre code {
-    font-family: var(--font-mono) !important; /* JetBrains Mono with ligatures */
+    font-family: var(--font-mono) !important; 
     font-size: 0.9em !important;
-    font-variant-ligatures: contextual; /* Enables programming ligatures */
 }
 
 /* 9. Scrollbar */
@@ -220,12 +210,8 @@ pre code {
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-purple); }
 
-/* 10. Human-in-the-Loop Feedback UI (streamlit-feedback) */
-div[data-testid="stFeedback"] {
-    background-color: transparent !important;
-    margin-top: 10px;
-}
-/* Style the Thumbs buttons */
+/* 10. Feedback UI */
+div[data-testid="stFeedback"] { background-color: transparent !important; margin-top: 10px; }
 div[data-testid="stFeedback"] button {
     background-color: #21262d !important;
     border: 1px solid #30363d !important;
@@ -237,16 +223,112 @@ div[data-testid="stFeedback"] button:hover {
     border-color: #a855f7 !important;
     color: #a855f7 !important;
 }
-div[data-testid="stFeedback"] button svg {
-    fill: #f0f6fc !important;
-}
+div[data-testid="stFeedback"] button svg { fill: #f0f6fc !important; }
 div[data-testid="stFeedback"] button[aria-pressed="true"] {
     background-color: #a855f7 !important;
     border-color: #a855f7 !important;
     color: #ffffff !important;
 }
-div[data-testid="stFeedback"] button[aria-pressed="true"] svg {
-    fill: #ffffff !important;
+div[data-testid="stFeedback"] button[aria-pressed="true"] svg { fill: #ffffff !important; }
+
+/* --- SPLIT SCREEN & LANDING PAGE CUSTOM CSS --- */
+.landing-grid {
+    display: flex;
+    height: 85vh;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+.left-panel {
+    flex: 1.2;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.right-panel {
+    flex: 0.8;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.brand-title {
+    font-family: var(--font-main) !important;
+    font-size: 3.5rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem !important;
+    letter-spacing: -0.04em !important;
+}
+.brand-subtitle {
+    font-family: var(--font-mono) !important;
+    color: var(--accent-purple) !important;
+    font-size: 1.2rem !important;
+    margin-bottom: 3rem !important;
+}
+.capabilities {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+.cap-item {
+    font-family: var(--font-main) !important;
+    color: var(--text-primary) !important;
+    font-size: 1.1rem !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cap-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-green);
+    border-radius: 50%;
+    display: inline-block;
+}
+.terminal-box {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    font-family: var(--font-mono) !important;
+}
+.terminal-header {
+    color: var(--text-secondary) !important;
+    font-size: 0.85rem !important;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+.terminal-line {
+    color: var(--text-primary) !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 0.5rem;
+}
+.ok-text { color: var(--accent-green) !important; }
+.tech-pills {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+.tech-pill {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary) !important;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-family: var(--font-mono) !important;
+}
+.auth-container {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
 }
 </style>
 """

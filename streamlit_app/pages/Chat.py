@@ -137,50 +137,74 @@ with main_col:
     with st.container(border=True, height=500):
         st.markdown("### Conversation History Log")
         
-        for i, item in enumerate(st.session_state.chat_history):
-            if isinstance(item, (list, tuple)) and len(item) >= 2:
-                role = item[0]
-                text = item[1]
-                sources = item[2] if len(item) >= 3 else []
-                context_chunks = item[3] if len(item) >= 4 else []
-                
-                if isinstance(sources, str):
-                    sources = [sources]
-                
-                with st.chat_message(role):
-                    st.markdown(text)
+        # --- EMPTY STATE UI (SUGGESTION CARDS) ---
+        if not st.session_state.chat_history:
+            st.markdown("Select a prompt below to explore the agent's capabilities, or type your own question above.")
+            st.write("")
+            
+            prompts = [
+                ("TEAM NAVIGATOR", "Who is the SME for the payment-gateway?"),
+                ("DOCUMENT RAG", "Summarize the latest engineering runbook"),
+                ("WEB SEARCH", "Search the web for LangGraph best practices")
+            ]
+            
+            p_cols = st.columns(3)
+            for i, (category, prompt_text) in enumerate(prompts):
+                with p_cols[i]:
+                    with st.container(border=True):
+                        st.caption(category)
+                        if st.button(prompt_text, key=f"suggest_{i}", use_container_width=True):
+                            st.session_state["pending_input"] = prompt_text
+                            st.rerun()
+        
+        # --- CHAT HISTORY RENDERING ---
+        else:
+            for i, item in enumerate(st.session_state.chat_history):
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    role = item[0]
+                    text = item[1]
+                    sources = item[2] if len(item) >= 3 else []
+                    context_chunks = item[3] if len(item) >= 4 else []
                     
-                    if sources:
-                        badges_html = "<div style='margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'>"
-                        for s in sources:
-                            badges_html += f"""
-                            <span style='background-color: #1c1c1c; color: #88c0d0; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; border: 1px solid #333333;'>
-                                📄 {s}
-                            </span>
-                            """
-                        badges_html += "</div>"
-                        st.markdown(badges_html, unsafe_allow_html=True)
+                    if isinstance(sources, str):
+                        sources = [sources]
                     
-                    if context_chunks:
-                        with st.expander(f"Inspect retrieved context ({len(context_chunks)} chunks)", expanded=False):
-                            for chunk in context_chunks:
-                                st.markdown(f"**Source:** `{chunk.get('source', 'unknown')}`")
-                                st.info(chunk.get('snippet', 'No snippet available.'))
-                                st.divider()
+                    with st.chat_message(role):
+                        st.markdown(text)
+                        
+                        # Render Source Citation Badges (No emojis, clean minimalistic look)
+                        if sources:
+                            badges_html = "<div style='margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'>"
+                            for s in sources:
+                                badges_html += f"""
+                                <span style='background-color: #1c1c1c; color: #88c0d0; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; border: 1px solid #333333;'>
+                                    {s}
+                                </span>
+                                """
+                            badges_html += "</div>"
+                            st.markdown(badges_html, unsafe_allow_html=True)
+                        
+                        if context_chunks:
+                            with st.expander(f"Inspect retrieved context ({len(context_chunks)} chunks)", expanded=False):
+                                for chunk in context_chunks:
+                                    st.markdown(f"**Source:** `{chunk.get('source', 'unknown')}`")
+                                    st.info(chunk.get('snippet', 'No snippet available.'))
+                                    st.divider()
 
-                    if role == "assistant":
-                        if i == len(st.session_state.chat_history) - 1:
-                            feedback = streamlit_feedback(
-                                feedback_type="thumbs",
-                                optional_text_label="[Optional] Provide feedback to improve the AI",
-                                key=f"feedback_{i}",
-                                align="flex-start"
-                            )
-                            if feedback:
-                                st.session_state.last_feedback = feedback
-                                if feedback.get("score") in ["👍", "👎"]:
-                                    st.toast("Feedback recorded! Thank you.", icon="📝")
+                        if role == "assistant":
+                            if i == len(st.session_state.chat_history) - 1:
+                                feedback = streamlit_feedback(
+                                    feedback_type="thumbs",
+                                    optional_text_label="[Optional] Provide feedback to improve the AI",
+                                    key=f"feedback_{i}",
+                                    align="flex-start"
+                                )
+                                if feedback:
+                                    st.session_state.last_feedback = feedback
+                                    if feedback.get("score") in ["👍", "👎"]:
+                                        st.toast("Feedback recorded! Thank you.", icon="📝")
 
+    # Handle input from chat box OR from suggestion/graph click
     user_input = st.chat_input("Ask about legacy code, team structures, or documentation...", key="chat_input")
     
     if "pending_input" in st.session_state:
