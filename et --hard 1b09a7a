@@ -1,0 +1,49 @@
+[33mcd973de[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33m1b09a7a[m HEAD@{1}: commit: docs: Update README with MongoDB, Dynamic LLM Router, and Premium UI details
+[33mcd973de[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{2}: commit: fix: Remove unsupported key arg from agraph to prevent crash
+[33m7a960de[m HEAD@{3}: commit: feat: Switch theme to Dark Emerald and update logout confirmation UI
+[33m7f05b92[m HEAD@{4}: commit: fix: Use native Streamlit columns for split-screen to fix blank screen
+[33m8c5cf74[m HEAD@{5}: commit: feat: Add premium split-screen landing page, live telemetry, and Space Grotesk typography
+[33mb55744a[m HEAD@{6}: commit: feat: Add dynamically rotating loading words using background threading
+[33m9a982db[m HEAD@{7}: commit: feat: Add source citation badges and clear chat session management
+[33mfc5901c[m HEAD@{8}: commit: fix: Replace agraph with stable native Streamlit Team Navigator UI
+[33mf8cbb28[m HEAD@{9}: commit: fix: Resolve duplicate kwarg in agraph Node creation
+[33mce8a076[m HEAD@{10}: commit: chore: Add streamlit-agraph and clean up requirements
+[33m9140d78[m HEAD@{11}: commit: fix: Restore Mistral with retries and use Gemini Pro as fallback
+[33mcd8ed6b[m HEAD@{12}: commit: fix: Use new Gemini key with pinned flash-002 model
+[33m771001a[m HEAD@{13}: commit: fix: Return clean string to frontend to fix Streamlit TypeError
+[33m0c81aeb[m HEAD@{14}: commit: feat: Switch LLM engine strictly to Google Gemini dynamic discovery
+[33m8e53e3b[m HEAD@{15}: commit: fix: Append current query to messages to fix Mistral 400 role order error
+[33m69edb3a[m HEAD@{16}: commit: fix: Restore original 3-tier LLM router with dynamic Gemini discovery
+[33mf1eb302[m HEAD@{17}: commit: fix: Update Gemini model name to gemini-1.5-flash-002
+[33m6ca76b6[m HEAD@{18}: commit: fix: Update Gemini model name to gemini-1.5-flash-latest
+[33m4c13178[m HEAD@{19}: commit: fix: Inject query for empty history and switch to Gemini LLM
+[33m9eb2d70[m HEAD@{20}: commit: fix: Clean mongo_client and use simple password
+[33m23c21ba[m HEAD@{21}: commit: fix: URL-encode MongoDB credentials to handle special characters
+[33md2a5ecc[m HEAD@{22}: commit: fix: Ensure mongo_client reads MONGO_URI from environment
+[33m538b17c[m HEAD@{23}: commit: fix: Move user auth to MongoDB to prevent Render ephemeral wipes
+[33md02a472[m HEAD@{24}: commit: fix: Switch LLM to Gemini Flash to prevent rate limit crashes
+[33md0dcedb[m HEAD@{25}: commit: refactor: Simplify LLM router to use Mistral exclusively
+[33md465424[m HEAD@{26}: commit: fix: Correct YAML prompt indentation and stabilize graph builder
+[33m4fbf6fc[m HEAD@{27}: commit: feat: Remove BYOK/Admin mode, implement secure JWT auth, and clean up file structure
+[33mbd625d0[m HEAD@{28}: commit: fix: Remove old FAISS index to fix dimension mismatch on Render
+[33m633e927[m HEAD@{29}: commit: fix: Match documents signature to routes.py and fix Streamlit switch_page case
+[33m514adc7[m HEAD@{30}: commit: fix: Restore APIRouter and bulletproof upload logic
+[33m163b033[m HEAD@{31}: commit: fix: Make documents sync to fix coroutine serialization error
+[33m320dfe4[m HEAD@{32}: commit: fix: Make documents a callable function to fix Router 500 error
+[33md1e5311[m HEAD@{33}: commit: fix: Restore documents APIRouter to fix ImportError
+[33m083c4bb[m HEAD@{34}: commit: fix: Correct Streamlit case sensitivity and bulletproof Render uploads
+[33m16ea063[m HEAD@{35}: commit: fix: Correct case-sensitive Home.py path for Streamlit Cloud
+[33ma5458a7[m HEAD@{36}: commit: fix: Correct bcrypt version syntax in requirements
+[33m7202ba5[m HEAD@{37}: commit: fix: Pin bcrypt version to fix passlib admin bootstrap crash
+[33mbebad29[m HEAD@{38}: pull origin main --no-edit: Merge made by the 'ort' strategy.
+[33m5ed905b[m HEAD@{39}: commit: fix: Add missing streamlit-feedback package for UI
+[33m920b48d[m HEAD@{40}: commit: fix: Use Google Gemini as primary embeddings to fit Render RAM
+[33mddd2f52[m HEAD@{41}: commit: fix: Add missing langchain-openai dependency
+[33m9ba74a6[m HEAD@{42}: commit: fix: Remove heavy ML libraries to fit Render free tier RAM
+[33m5120008[m HEAD@{43}: commit: fix: Clean requirements.txt to resolve pip conflict
+[33m030125c[m HEAD@{44}: commit: fix: Resolve dependency conflict and force Python 3.12
+[33mde8a8e9[m HEAD@{45}: commit: fix: Read backend URL from Streamlit secrets for production
+[33md15a0a4[m HEAD@{46}: commit: fix: Resolve langchain-core dependency conflict
+[33m6df407c[m HEAD@{47}: Branch: renamed refs/heads/master to refs/heads/main
+[33m6df407c[m HEAD@{49}: commit (initial): Initial commit: Enterprise-grade Agentic RAG system
