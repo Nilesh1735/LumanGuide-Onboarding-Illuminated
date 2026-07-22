@@ -75,16 +75,17 @@ def evaluate_query_intent(state: WorkflowExecutionState):
     
     try:
         active_llm = get_active_llm(state) # BYOK INTEGRATION
-        llm_with_structured_output = active_llm.with_structured_output(RouteIdentifier)
-        chain = classify_prompt | llm_with_structured_output
-        result = chain.invoke({"question": question, "context": context})
-        decision = result.route
-
-        if "team" in decision or "nav" in decision:
+        # FIX: Use standard invoke to avoid DeepSeek 400 error with strict response_format
+        chain = classify_prompt | active_llm
+        raw_result = chain.invoke({"question": question, "context": context})
+        
+        # Parse the text output to find the route
+        decision_text = raw_result.content.strip().lower()
+        if "team" in decision_text or "nav" in decision_text:
             route = "team_nav"
-        elif "index" in decision:
+        elif "index" in decision_text:
             route = "index"
-        elif "search" in decision:
+        elif "search" in decision_text:
             route = "search"
         else:
             route = "general"
@@ -149,10 +150,16 @@ def grade(state: WorkflowExecutionState):
 
     try:
         active_llm = get_active_llm(state) # BYOK INTEGRATION
-        llm_with_grade = active_llm.with_structured_output(Grade)
-        chain_graded = grading_prompt | llm_with_grade
-        result = chain_graded.invoke({"question": question, "context": context})
-        score = result.binary_score
+        # FIX: Use standard invoke to avoid DeepSeek 400 error with strict response_format
+        chain_graded = grading_prompt | active_llm
+        raw_result = chain_graded.invoke({"question": question, "context": context})
+        
+        # Parse the text output to find yes/no
+        result_text = raw_result.content.strip().lower()
+        if "yes" in result_text:
+            score = "yes"
+        else:
+            score = "no"
     except Exception as e:
         logger.warning(f"Grading LLM failed: {e}. Defaulting to 'yes'.")
         score = "yes"
