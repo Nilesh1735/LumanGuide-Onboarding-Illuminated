@@ -7,7 +7,7 @@
 # LumanGuide - Onboarding, Illuminated
 
 <div align="center">
-<p>An enterprise-grade, intelligent Retrieval-Augmented Generation (RAG) system powered by a LangGraph state machine. Features dynamic LLM routing, real-time agent telemetry, and a premium SaaS UI.</p>
+<p>An enterprise-grade, intelligent Retrieval-Augmented Generation (RAG) system powered by a LangGraph state machine. Features dynamic query routing, real-time agent telemetry, and a premium SaaS UI.</p>
 
 <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
 <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
@@ -22,7 +22,7 @@
 
 LumanGuide is a stateful, agentic AI platform that uses a LangGraph state machine to intelligently route queries to the most appropriate data source—indexed internal documents (FAISS), general LLM knowledge, or real-time web search (Tavily). 
 
-Unlike standard RAG implementations, LumanGuide features a **Dynamic 3-Tier LLM Router** (DeepSeek → Mistral → Gemini), a **Contextual Team Navigator** for SME routing, **MongoDB Atlas** for persistent cloud chat history, and a robust AppSec suite to prevent prompt injection and secret leakage. The frontend is built as a premium B2B SaaS application, featuring a split-screen landing page, live system telemetry, and an agent thought-process terminal.
+Unlike standard RAG implementations, LumanGuide features a **DeepSeek + Gemini Architecture** (DeepSeek V3 for state-machine reasoning, Gemini for FAISS embeddings), a **Contextual Team Navigator** for SME routing, **MongoDB Atlas** for persistent cloud chat history, and a robust AppSec suite to prevent prompt injection and secret leakage. The frontend is built as a premium B2B SaaS application, featuring a split-screen landing page, live system telemetry, and an agent thought-process terminal.
 
 ## Tech Stack
 
@@ -35,7 +35,7 @@ Unlike standard RAG implementations, LumanGuide features a **Dynamic 3-Tier LLM 
 </tr>
 <tr>
 <td>AI & GenAI</td>
-<td>LangChain, LangGraph, DeepSeek (V3), Mistral AI, Google Gemini, Tavily, FAISS</td>
+<td>LangChain, LangGraph, DeepSeek (V3), Google Gemini, Tavily, FAISS</td>
 </tr>
 <tr>
 <td>Backend</td>
@@ -69,7 +69,7 @@ Unlike standard RAG implementations, LumanGuide features a **Dynamic 3-Tier LLM 
 
 This repository includes production-grade, enterprise-level architectural implementations:
 
-1. **Dynamic 3-Tier LLM Router (`src/llms/openai.py`):** Automatically falls back from DeepSeek → Mistral → Google Gemini based on API availability and rate limits, ensuring zero downtime.
+1. **DeepSeek + Gemini Architecture (`src/llms/openai.py`):** Powered by DeepSeek (V3) for rapid state-machine generation and reasoning, paired with Google Gemini for high-dimensional FAISS vector embeddings. To prevent pipeline crashes on DeepSeek's strict `response_format` limits, structured outputs were bypassed in favor of standard text parsing to keep the agent flowing cleanly.
 2. **Premium SaaS UI (`streamlit_app/`):** A custom-built split-screen landing page with live system telemetry, Space Grotesk typography, and a Dark Emerald theme.
 3. **Agent Telemetry Terminal:** Real-time UI logging that displays the LangGraph state machine's execution steps (e.g., *Synthesizing, Untangling, Crunching*) to the user.
 4. **RAG Transparency:** Source citation badges and an "Inspect retrieved context" expander for every AI response, proving zero hallucination.
@@ -107,9 +107,9 @@ This repository includes production-grade, enterprise-level architectural implem
 └───────────────────────────────────┬─────────────────────────────┘
           ↓                 ↓                 ↓
 ┌─────────────────┐ ┌──────────────┐ ┌──────────────────┐
-│  Retriever      │ │  Dynamic LLM │ │  Web Search      │
-│  (FAISS + Gemini│ │  Router      │ │  (Tavily)        │
-│   Embeddings)   │ │  (DeepSeek)  │ │                  │
+│  Retriever      │ │  Primary LLM │ │  Web Search      │
+│  (FAISS + Gemini│ │  (DeepSeek)  │ │  (Tavily)        │
+│   Embeddings)   │ │              │ │                  │
 └─────────────────┘ └──────────────┘ └──────────────────┘
           ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -136,7 +136,7 @@ LumanGuide/
 │   ├── db/
 │   │   └── mongo_client.py      # MongoDB Atlas async client (Motor)
 │   ├── llms/
-│   │   ├── openai.py            # Dynamic 3-Tier LLM Router
+│   │   ├── openai.py            # DeepSeek + Gemini Initialization
 │   │   └── router.py            # NVIDIA NIM fallback router
 │   ├── rag/
 │   │   ├── graph_builder.py     # LangGraph state machine construction
@@ -173,7 +173,7 @@ LumanGuide/
 
 ### Prerequisites
 - **Python 3.12+** 
-- API Keys: DeepSeek (Primary LLM), Google Gemini (for Embeddings), Mistral AI, Tavily (for Search)
+- API Keys: DeepSeek (Primary LLM), Google Gemini (for Embeddings), Tavily (for Search)
 - MongoDB Atlas connection string (for cloud auth & history)
 
 ### Installation
@@ -203,7 +203,6 @@ Create a `.env` file in the project root. **Never commit this file.**
 # --- Core AI Configuration ---
 DEEPSEEK_API_KEY=your_deepseek_key_here
 GOOGLE_API_KEY=AIzaSyYOUR_GEMINI_KEY
-MISTRAL_API_KEY=YOUR_MISTRAL_KEY
 TAVILY_API_KEY=tvly-YOUR_TAVILY_KEY
 
 # --- Database (MongoDB Atlas) ---
@@ -254,4 +253,3 @@ Access the application at `http://localhost:8501`.
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:10b981,100:059669&height=120&section=footer" width="100%" />
 </a>
 </div>
-```
