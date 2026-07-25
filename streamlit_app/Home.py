@@ -6,7 +6,8 @@ from utils.theme import get_custom_css
 
 api_client = importlib.reload(api_client)
 
-st.set_page_config(page_title="LumanGuide | Welcome", page_icon="assets/favicon.svg", layout="wide")
+# Added ?v=2 to force Streamlit/Render to bypass cache and load the new favicon
+st.set_page_config(page_title="LumanGuide | Welcome", page_icon="assets/favicon.svg?v=2", layout="wide")
 
 # Apply the unified reference palette
 st.markdown(get_custom_css(page="home"), unsafe_allow_html=True)
