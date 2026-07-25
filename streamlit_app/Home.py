@@ -6,7 +6,7 @@ from utils.theme import get_custom_css
 
 api_client = importlib.reload(api_client)
 
-st.set_page_config(page_title="LumanGuide | Welcome", layout="wide")
+st.set_page_config(page_title="LumanGuide | Welcome", page_icon="assets/favicon.svg", layout="wide")
 
 # Apply the unified reference palette
 st.markdown(get_custom_css(page="home"), unsafe_allow_html=True)
@@ -87,7 +87,7 @@ if st.session_state.get("api_initialized"):
                     login_password = st.text_input("Password", type="password", key="login_pass", placeholder="Enter your password")
 
                     st.write("") # Margin spacing
-                    if st.button("Log in", use_container_width=True, type="primary"):
+                    if st.button("Log in", width="stretch", type="primary"):
                         auth_response = api_client.login_user(login_username, login_password, st.session_state["api_token"])
 
                         if is_success(auth_response) and isinstance(auth_response, dict) and auth_response.get("token"):
@@ -108,7 +108,7 @@ if st.session_state.get("api_initialized"):
                     signup_password = st.text_input("Choose a password", type="password", key="signup_pass", placeholder="Minimum 6 characters")
 
                     st.write("") # Margin spacing
-                    if st.button("Sign up", use_container_width=True, type="primary"):
+                    if st.button("Sign up", width="stretch", type="primary"):
                         if signup_username and signup_email and signup_password:
                             try:
                                 result = api_client.create_user(signup_username, signup_email, signup_password, st.session_state["api_token"])
@@ -145,7 +145,7 @@ if st.session_state.get("api_initialized"):
             
         with col_logout:
             st.write("") # Spacer
-            if st.button("Log out", use_container_width=True):
+            if st.button("Log out", width="stretch"):
                 del st.session_state["jwt_token"]
                 st.session_state.pop("session_id", None)
                 st.rerun()
@@ -160,7 +160,7 @@ if st.session_state.get("api_initialized"):
                 st.markdown("#### Chat Workspace")
                 st.caption("Interact with the Adaptive RAG state machine. Query documents, navigate team structures, and synthesize data.")
                 st.write("")
-                if st.button("Launch Chat", use_container_width=True, type="primary"):
+                if st.button("Launch Chat", width="stretch", type="primary"):
                     st.switch_page("pages/Chat.py")
         
         with col_docs:
@@ -168,7 +168,7 @@ if st.session_state.get("api_initialized"):
                 st.markdown("#### Data Ingestion")
                 st.caption("Upload new engineering runbooks, PDFs, or team configurations to expand the vector knowledge base.")
                 st.write("")
-                if st.button("Manage Documents", use_container_width=True):
+                if st.button("Manage Documents", width="stretch"):
                     st.switch_page("pages/Chat.py")
 
 else:
